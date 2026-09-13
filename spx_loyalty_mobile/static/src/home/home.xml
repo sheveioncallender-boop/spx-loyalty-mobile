@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="spx_loyalty_mobile.Home">
+        <div class="o_jennys_rewards_home">
+            <main class="jr-shell">
+                <header class="jr-topline">
+                    <span class="jr-wordmark">Jenny’s <span>on the Boulevard</span></span>
+                    <span class="jr-topnote">Customer experience</span>
+                </header>
+                <section class="jr-hero" aria-labelledby="jr-title">
+                    <div class="jr-hero-content">
+                        <p class="jr-eyebrow">GOOD FOOD. GREAT COMPANY.</p>
+                        <h1 id="jr-title">Jenny’s Rewards</h1>
+                        <p class="jr-intro">A familiar welcome. A little more rewarding.</p>
+                        <p class="jr-description">Your customers, loyalty cards and messages,<br class="jr-desktop-break"/> together in one place.</p>
+                    </div>
+                    <div class="jr-hero-brand">
+                        <img class="jr-logo" src="/spx_loyalty_mobile/static/description/icon.png" alt="Jenny's on the Boulevard, established 1987"/>
+                        <span class="jr-brand-caption">THE PLACE FOR YOUR REGULARS</span>
+                    </div>
+                </section>
+                <div class="jr-section-heading">
+                    <div><p class="jr-eyebrow">MEMBER SERVICES</p><h2>Make every visit count.</h2></div>
+                    <span class="jr-section-note">Choose where you’d like to begin.</span>
+                </div>
+                <section class="jr-shortcuts" aria-label="Customer and loyalty management">
+                    <t t-foreach="shortcuts" t-as="item" t-key="item.key">
+                        <button type="button" class="jr-shortcut" t-att-class="{ 'is-opening': state.opening === item.key }"
+                                t-att-disabled="state.opening !== null" t-att-aria-busy="state.opening === item.key ? 'true' : 'false'"
+                                t-on-click="() => this.openAction(item.key, item.action)">
+                            <span t-att-class="'jr-icon jr-icon-' + item.tone">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path t-att-d="item.icon"/></svg>
+                            </span>
+                            <span class="jr-shortcut-title" t-esc="item.title"/>
+                            <span class="jr-shortcut-description" t-esc="item.description"/>
+                            <span class="jr-shortcut-link">
+                                <t t-if="state.opening === item.key"><span class="jr-spinner" aria-hidden="true"/>Opening…</t>
+                                <t t-else=""><t t-esc="item.link"/><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></t>
+                            </span>
+                        </button>
+                    </t>
+                </section>
+                <section class="jr-settings" aria-label="App settings">
+                    <span class="jr-settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></span>
+                    <div class="jr-settings-copy"><h2>Your app, connected.</h2><p>Choose the website and loyalty programs available to your customers.</p></div>
+                    <button type="button" class="jr-settings-button" t-att-disabled="state.opening !== null"
+                            t-att-aria-busy="state.opening === 'settings' ? 'true' : 'false'"
+                            t-on-click="() => this.openAction('settings', 'websites_action')">
+                        <t t-if="state.opening === 'settings'"><span class="jr-spinner" aria-hidden="true"/>Opening…</t>
+                        <t t-else="">App settings <span aria-hidden="true">↗</span></t>
+                    </button>
+                </section>
+                <footer class="jr-footer"><span>Jenny’s on the Boulevard</span><span>Good company since 1987.</span></footer>
+            </main>
+        </div>
+    </t>
+</templates>
