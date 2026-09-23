@@ -25,6 +25,13 @@ class GiftDelivery(models.Model):
     _card_once = models.Constraint('UNIQUE(card_id)', 'This card has already been sent as a gift.')
     _request_once = models.Constraint('UNIQUE(sender_id, website_id, request_key)', 'This gift request was already processed.')
 
+    def _mail_get_operation_for_mail_message_operation(self, message_operation):
+        # Delivery metadata is immutable to admins, but native email retries
+        # must still be able to update the linked message after SMTP accepts it.
+        if message_operation == 'write' and self.env.user.has_group('base.group_system'):
+            return dict.fromkeys(self, 'read')
+        return super()._mail_get_operation_for_mail_message_operation(message_operation)
+
     def _queue_delivery(self):
         self.ensure_one()
         if self.mail_id:

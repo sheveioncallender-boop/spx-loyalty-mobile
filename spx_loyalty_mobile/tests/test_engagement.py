@@ -106,5 +106,8 @@ class TestMemberExtras(TransactionCase):
         self.assertEqual(self.env['res.users'].search_count([]), user_count)
         self.assertEqual(delivery.mail_id.state, 'outgoing')
         self.assertEqual(delivery.mail_id.model, 'spx.mobile.gift.delivery')
+        # Match the native retry path without making an SMTP connection.
+        delivery.mail_id.with_user(self.env.ref('base.user_admin')).write({'message_id': '<gift-retry@example.invalid>'})
+        self.assertEqual(delivery.mail_id.message_id, '<gift-retry@example.invalid>')
         with self.assertRaises(AccessError):
             delivery.with_user(self.user).read(['recipient_email'])
