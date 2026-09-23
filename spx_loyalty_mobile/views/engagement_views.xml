@@ -1,0 +1,51 @@
+<odoo>
+  <record id="website_engagement_form" model="ir.ui.view">
+    <field name="name">website.form.spx.engagement</field><field name="model">website</field>
+    <field name="inherit_id" ref="website_mobile_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='spx_mobile_pos_config_id']/.." position="after">
+        <group string="Birthday credit">
+          <field name="spx_birthday_enabled"/><field name="spx_birthday_program_id" options="{'no_create': True}"/>
+          <field name="currency_id" invisible="1"/><field name="spx_birthday_amount"/><field name="spx_birthday_days"/>
+          <field name="spx_birthday_message"/><field name="spx_member_timezone"/>
+        </group>
+        <p>Credit is issued once per member per calendar year, on their local birthday. The issue date counts as day one. February 29 birthdays use February 28 in non-leap years. A dedicated native gift-card program with no sale trigger products keeps promotional credit separate from purchased value. Existing balances and expiry dates are not changed when these settings change.</p>
+        <group string="Gift cards">
+          <field name="spx_gift_program_ids" widget="many2many_tags" options="{'no_create': True}"/>
+          <field name="spx_gift_product_ids" widget="many2many_tags" options="{'no_create': True}"/>
+        </group>
+        <p>Use your existing gift card programs and published products. Enable POS, Sales and Website on the native program where required. Keep its native reward applicable to the whole order so it covers all purchases. The app opens native online checkout; dine-in orders remain payable at the POS. No payments or balances are calculated by the app.</p>
+      </xpath>
+    </field>
+  </record>
+  <record id="birthday_list" model="ir.ui.view"><field name="name">spx.birthday.list</field><field name="model">spx.mobile.birthday.award</field><field name="arch" type="xml"><list create="0" edit="0" delete="0"><field name="partner_id"/><field name="year"/><field name="issued_on"/><field name="amount"/><field name="balance"/><field name="currency_id"/><field name="expires"/><field name="card_id"/><field name="website_id"/></list></field></record>
+  <record id="birthday_action" model="ir.actions.act_window"><field name="name">Birthday Credits</field><field name="res_model">spx.mobile.birthday.award</field><field name="view_mode">list,form</field></record>
+  <record id="announcement_list" model="ir.ui.view"><field name="name">spx.announcement.list</field><field name="model">spx.mobile.announcement</field><field name="arch" type="xml"><list><field name="name"/><field name="website_id"/><field name="audience"/><field name="scheduled_at"/><field name="state"/><field name="published_at"/></list></field></record>
+  <record id="announcement_form" model="ir.ui.view"><field name="name">spx.announcement.form</field><field name="model">spx.mobile.announcement</field><field name="arch" type="xml">
+    <form string="Event Announcement">
+      <header>
+        <button name="action_publish" type="object" string="Publish to app inbox" class="btn-primary" invisible="state != 'draft'" confirm="Publish this announcement to the selected members’ app inboxes?"/>
+        <button name="action_schedule" type="object" string="Schedule" invisible="state != 'draft'"/>
+        <button name="action_cancel" type="object" string="Cancel" invisible="state not in ['draft', 'scheduled']"/>
+        <field name="state" widget="statusbar"/>
+      </header>
+      <sheet>
+        <div class="oe_title"><h1><field name="name" placeholder="An evening at Jenny’s" readonly="state != 'draft'"/></h1></div>
+        <group><field name="website_id" readonly="state != 'draft'"/><field name="audience" readonly="state != 'draft'"/><field name="partner_ids" widget="many2many_tags" invisible="audience != 'selected'" readonly="state != 'draft'"/><field name="scheduled_at" readonly="state != 'draft'"/><field name="published_at" invisible="not published_at"/></group>
+        <field name="body" placeholder="Tell members what’s happening…" readonly="state != 'draft'"/>
+        <p class="text-muted">Your title and message appear as written in the app inbox. Only eligible members who have enabled event announcements receive it.</p>
+        <field name="delivery_note" nolabel="1"/>
+        <separator string="Delivered messages"/><field name="message_ids" readonly="1"/>
+      </sheet>
+    </form>
+  </field></record>
+  <record id="announcement_action" model="ir.actions.act_window"><field name="name">Event Announcements</field><field name="res_model">spx.mobile.announcement</field><field name="view_mode">list,form</field></record>
+  <record id="gift_delivery_list" model="ir.ui.view"><field name="name">spx.gift.delivery.list</field><field name="model">spx.mobile.gift.delivery</field><field name="arch" type="xml"><list create="0" edit="0" delete="0"><field name="sender_id"/><field name="recipient_email"/><field name="recipient_id"/><field name="card_id"/><field name="mail_state"/><field name="create_date"/><field name="website_id"/></list></field></record>
+  <record id="gift_delivery_action" model="ir.actions.act_window"><field name="name">Sent Gifts</field><field name="res_model">spx.mobile.gift.delivery</field><field name="view_mode">list,form</field></record>
+  <record id="gift_cards_action" model="ir.actions.act_window"><field name="name">Gift Cards</field><field name="res_model">loyalty.card</field><field name="view_mode">list,form</field><field name="domain">[('program_type', '=', 'gift_card')]</field></record>
+  <menuitem id="mobile_engagement_menu" name="Member Extras" parent="mobile_menu" sequence="35"/>
+  <menuitem id="mobile_birthday_menu" name="Birthday Credits" parent="mobile_engagement_menu" action="birthday_action" sequence="1"/>
+  <menuitem id="mobile_announcements_menu" name="Event Announcements" parent="mobile_engagement_menu" action="announcement_action" sequence="2"/>
+  <menuitem id="mobile_gift_cards_menu" name="Gift Cards" parent="mobile_engagement_menu" action="gift_cards_action" sequence="3"/>
+  <menuitem id="mobile_gift_deliveries_menu" name="Sent Gifts" parent="mobile_engagement_menu" action="gift_delivery_action" sequence="4"/>
+</odoo>
