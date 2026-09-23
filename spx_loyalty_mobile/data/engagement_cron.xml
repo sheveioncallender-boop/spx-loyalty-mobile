@@ -1,0 +1,12 @@
+<odoo noupdate="1">
+  <record id="cron_member_birthdays" model="ir.cron">
+    <field name="name">Jenny’s: birthday credit</field><field name="model_id" ref="model_spx_mobile_birthday_award"/>
+    <field name="state">code</field><field name="code">model._cron_birthdays()</field>
+    <field name="interval_number">1</field><field name="interval_type">hours</field><field name="active">True</field>
+  </record>
+  <record id="cron_member_announcements" model="ir.cron">
+    <field name="name">Jenny’s: scheduled announcements</field><field name="model_id" ref="model_spx_mobile_announcement"/>
+    <field name="state">code</field><field name="code">model._cron_announcements()</field>
+    <field name="interval_number">5</field><field name="interval_type">minutes</field><field name="active">True</field>
+  </record>
+</odoo>

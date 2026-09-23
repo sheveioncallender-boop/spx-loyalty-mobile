@@ -38,6 +38,30 @@ export class JennysRewardsHome extends Component {
                 link: _t("Open messages"), tone: "green",
                 icon: "M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5ZM8 10h8M8 14h5",
             },
+            {
+                key: "birthday", action: "birthday_customers_action", title: _t("Customer birthdays"),
+                description: _t("Upcoming birthdays, native balances and days left to enjoy."),
+                link: _t("Manage birthdays"), tone: "gold",
+                icon: "M3 8h18v4H3zM5 12v9h14v-9M12 8v13M12 8H8a3 3 0 1 1 3-3zM12 8h4a3 3 0 1 0-3-3z",
+            },
+            {
+                key: "events", action: "announcement_action", title: _t("Event announcements"),
+                description: _t("Publish or schedule a little news from Jenny’s."),
+                link: _t("Open announcements"), tone: "blue",
+                icon: "M3 10h4l12-5v14L7 14H3zM7 14l2 7h3l-2-6",
+            },
+            {
+                key: "gifts", action: "gift_cards_action", title: _t("Gift cards"),
+                description: _t("Your existing gift cards, managed in the usual way."),
+                link: _t("Open gift cards"), tone: "green",
+                icon: "M3 5h18v14H3zM3 10h18M7 15h3M12 5v14",
+            },
+            {
+                key: "sent-gifts", action: "gift_delivery_action", title: _t("Sent gifts"),
+                description: _t("Follow recipient details and email delivery."),
+                link: _t("View sent gifts"), tone: "gold",
+                icon: "M3 5h18v14H3zM3 5l9 7 9-7",
+            },
         ];
     }
 

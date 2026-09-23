@@ -1,3 +1,17 @@
+# Jenny’s member extras — connector 19.0.4.1.0
+
+Deploy and **upgrade this existing module**, do not uninstall. Restart after the upgrade completes. This release adds fields and models, so restarting alone is insufficient.
+
+This update adds Customer Birthdays and Birthday Settings, staff issue controls and native balance/expiry actions. Assigned cards appear automatically; customer code claiming is removed. Existing customer Date fields can be selected as the birthday source.
+
+Read `MEMBER_EXTRAS_TEST.md` included in this module for birthday credit, native gift-card programs/products, announcements and acceptance testing. No POS assets or native POS model overrides are added. Payment, balance calculation and redemption remain native.
+
+Firebase is deferred; announcements currently reach the app inbox only. Odoo database integration tests are included but must be run on a disposable Odoo 19 instance before deployment to production.
+
+---
+
+Historical release notes follow.
+
 ## Verified registration update — 19.0.3.0.0
 
 Upgrade the installed module before testing Android 0.5.0+9. Configure the signup program, sender, HTTPS account origin and policies in the website Customer App tab. See the included `SIGNUP_SETUP.md` for setup and validation limits.
