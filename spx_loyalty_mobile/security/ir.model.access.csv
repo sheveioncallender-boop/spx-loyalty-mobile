@@ -4,3 +4,4 @@ access_spx_registration_admin,Registration administrator,model_spx_mobile_regist
 access_spx_birthday_admin,Birthday credit administrator,model_spx_mobile_birthday_award,base.group_system,1,0,0,0
 access_spx_announcement_admin,Announcement administrator,model_spx_mobile_announcement,base.group_system,1,1,1,0
 access_spx_gift_delivery_admin,Gift delivery administrator,model_spx_mobile_gift_delivery,base.group_system,1,0,0,0
+access_spx_birthday_issue_admin,Birthday issue administrator,model_spx_mobile_birthday_issue,base.group_system,1,1,1,1

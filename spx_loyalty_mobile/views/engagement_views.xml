@@ -7,9 +7,9 @@
         <group string="Birthday credit">
           <field name="spx_birthday_enabled"/><field name="spx_birthday_program_id" options="{'no_create': True}"/>
           <field name="currency_id" invisible="1"/><field name="spx_birthday_amount"/><field name="spx_birthday_days"/>
-          <field name="spx_birthday_message"/><field name="spx_member_timezone"/>
+          <field name="spx_birthday_audience"/><field name="spx_birthday_field_id" options="{'no_create': True}"/><field name="spx_birthday_message"/><field name="spx_member_timezone"/>
         </group>
-        <p>Credit is issued once per member per calendar year, on their local birthday. The issue date counts as day one. February 29 birthdays use February 28 in non-leap years. A dedicated native gift-card program with no sale trigger products keeps promotional credit separate from purchased value. Existing balances and expiry dates are not changed when these settings change.</p>
+        <p>Credit is issued once per eligible customer and company per calendar year, on their local birthday. Choose the audience in Birthday Settings. The issue date counts as day one. February 29 birthdays use February 28 in non-leap years. A dedicated native gift-card program with no sale trigger products keeps promotional credit separate from purchased value. Existing balances and expiry dates are not changed when these settings change.</p>
         <group string="Gift cards">
           <field name="spx_gift_program_ids" widget="many2many_tags" options="{'no_create': True}"/>
           <field name="spx_gift_product_ids" widget="many2many_tags" options="{'no_create': True}"/>

@@ -3,7 +3,6 @@
 No overrides of POS, sale payment, accounting, or reward calculation.
 """
 import math
-from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from odoo import _, api, fields, models
@@ -22,6 +21,15 @@ class Website(models.Model):
     _inherit = 'website'
 
     spx_birthday_enabled = fields.Boolean('Enable birthday credit', groups='base.group_system', prefetch=False)
+    spx_birthday_audience = fields.Selection([
+        ('members', 'Verified app members'),
+        ('customers', 'All customer contacts with a birthday'),
+    ], default='members', required=True, groups='base.group_system', prefetch=False)
+    spx_birthday_field_id = fields.Many2one(
+        'ir.model.fields', string='Existing customer birthday field',
+        domain="[('model', '=', 'res.partner'), ('ttype', '=', 'date'), ('store', '=', True)]",
+        groups='base.group_system', prefetch=False, ondelete='set null',
+        help='Optional existing contact date field. Used when filled; otherwise the app signup birthday is used. No dates are copied or overwritten.')
     spx_birthday_program_id = fields.Many2one('loyalty.program', string='Birthday credit program', groups='base.group_system', prefetch=False,
         domain="[('program_type', '=', 'gift_card')]",
         help='Use a separate native gift-card program for promotional credit, not your purchased gift-card program.')
@@ -110,20 +118,18 @@ class BirthdayAward(models.Model):
             # Serialize across websites in one company; the unique constraint is a final safeguard.
             self.env.cr.execute('SELECT pg_advisory_xact_lock(%s, %s)', (739401, w.company_id.id))
             issued = self.sudo().search([('company_id', '=', w.company_id.id), ('year', '=', today.year)]).partner_id
-            for partner in w._spx_members() - issued:
-                birth = partner.spx_mobile_birthday
+            customers = w._spx_birthday_customers()
+            if w.spx_birthday_audience != 'customers':
+                customers &= w._spx_members()
+            for partner in customers - issued:
+                birth = w._spx_birth_date(partner)
                 if not birth or birth >= today or birthday_in_year(birth, today.year) != today:
                     continue
-                # The issue date is day one: 21 days includes today and the next 20 days.
-                card = self.env['loyalty.card'].sudo().with_context(loyalty_no_mail=True).create({
-                    'program_id': w.spx_birthday_program_id.id, 'partner_id': partner.id,
-                    'points': w.spx_birthday_amount, 'expiration_date': today + timedelta(days=w.spx_birthday_days - 1),
-                })
-                self.env['loyalty.history'].sudo().create({'card_id': card.id, 'description': _('Birthday credit %s') % today.year, 'issued': w.spx_birthday_amount})
-                self.sudo().create({'partner_id': partner.id, 'website_id': w.id, 'company_id': w.company_id.id,
-                    'year': today.year, 'issued_on': today, 'card_id': card.id, 'amount': w.spx_birthday_amount})
-                self.env['spx.mobile.message'].sudo().create({'name': _('Happy birthday from Jenny’s!'),
-                    'body': w.spx_birthday_message, 'website_id': w.id, 'partner_id': partner.id})
+                # Respect cards already issued directly in the native program.
+                if any(w._spx_birthday_card_year(c) == today.year for c in w._spx_birthday_cards(partner)):
+                    continue
+                self._issue_credit(w, partner, w.spx_birthday_amount, w.spx_birthday_days,
+                                   _('Birthday credit %s') % today.year)
 
 
 class Announcement(models.Model):

@@ -1,69 +1,85 @@
-# Jenny’s member extras — test update 0.7.0+13
+# Jenny’s member extras — test update 0.7.1+14
 
-Connector: **19.0.4.0.0**. Android: **0.7.0+13**.
+Connector: **19.0.4.1.0**. Android: **0.7.1+14**.
 
-This update adds member features to the existing integration. Native POS screens, order processing, table assignment, kitchen routing, payment, accounting and loyalty calculations are unchanged. Do not install on the live database until the checks below pass on the test instance.
+This update adds birthday management and removes customer gift-card code entry. Native POS screens, orders, table assignment, kitchen, payments, accounting and redemption are unchanged. Odoo generates all card codes and holds all balances and expiry dates.
 
-## Install in this order
+## Update the test instance
 
-1. Back up the test database. Deploy the replacement `spx_loyalty_mobile` folder and **upgrade that module** against `jennys.spxcorp.site`; a restart or Apps-list refresh alone does not add database fields. Use Cloudpepper’s module upgrade task if the backend is unavailable.
-2. Restart the instance after the upgrade succeeds, then refresh the browser. The new backend menus are Birthday Credits, Event Announcements, Gift Cards and Sent Gifts.
-3. Install the new test APK over 0.6.0. It retains the existing test certificate and application ID. Your existing login should be preserved.
-4. Keep Firebase deferred. This version publishes messages to the app inbox; it does not send background device push notifications.
+1. In Cloudpepper pull **codex/member-extras-19.0.4**, not main, from the existing spx-loyalty-mobile repository.
+2. Upgrade the installed **spx_loyalty_mobile** module to **19.0.4.1.0**. Do not uninstall it. Restart after a successful upgrade and refresh the browser. Pulling files or restarting alone does not add the new database fields.
+3. Install Android **0.7.1+14** over the existing test app. Its application ID and test signing certificate are unchanged.
+4. Firebase remains deferred. Announcements and birthday greetings appear in the app inbox; background device push is not enabled yet.
 
-## Birthday credit
+## Birthday Settings
 
-In native **Gift cards & eWallet**, create a dedicated **Gift Card** program named **Jenny’s Birthday Credit**. Use the normal native reward: 1 currency unit per point, applied to the whole order. Enable the sales channels where it should work, including the POS. Remove all trigger products from this promotional program so buying products never issues birthday credit.
+Open **Jenny’s Rewards → Member Extras → Birthday Settings**, then your website.
 
-In **Jenny’s Rewards → Settings → Customer App**:
+- **Birthday credit program:** select a dedicated native Gift Card program, such as Jenny’s Birthday Credit. Keep it separate from purchased gift cards. Use the native whole-order reward of one currency unit per point, in the website currency. Enable the native POS/Sales/Website channels where it should work. Remove sale trigger products so purchases do not issue promotional birthday credit.
+- **Birthday credit amount:** your default amount; it is not hard-coded.
+- **Birthday validity (days):** defaults to 21. It can be changed.
+- **Birthday greeting:** the inbox message customers receive.
+- **Existing customer birthday field:** if birthdays already exist in another stored Date field on Contacts, select that field. It is read directly; no dates or contacts are copied. A blank value falls back to the birthday collected at app signup.
+- **Audience:** Verified app members (existing default), or All customer contacts with a birthday. The second option includes customers who have not joined the app. Choose it explicitly to enable automatic awards for them.
+- **Timezone:** America/Port_of_Spain.
+- Enable birthday credit and save once the program and amount are configured.
 
-- Choose that program under Birthday credit.
-- Enter the amount and greeting. Leave validity at **21 days**.
-- Keep timezone **America/Port_of_Spain**.
-- Enable birthday credit and save.
+Default amount and validity changes affect future awards, not existing cards.
 
-The hourly job issues a native card and an inbox greeting to eligible members on their local birthday. Eligibility requires an active individual portal account with verified or preserved legacy access and a native loyalty card in a visible program. A birthday must be recorded on the contact.
+## Customer Birthdays
 
-The date of issue is day one. A September 23 award is valid through October 13. February 29 birthdays use February 28 in non-leap years. Once-per-year protection is per customer and company, including retries and another website in that company. Changing the amount affects future awards only. The job does not backdate missed birthdays.
+Open **Member Extras → Customer Birthdays**. If more than one website is enabled, select the website in Birthday Settings and click Customer birthdays.
 
-For a test, use a test member whose birthday is today and run **Jenny’s: birthday credit** from Scheduled Actions. Open **Rewards → Gifts & birthday treats**. Run the job again: the card and credit must not duplicate. Do not run this on a live birthday audience while testing.
+The list reads active individual top-level customer contacts, including nonmembers. Companies, child contacts and contacts with internal staff users are excluded. It shows:
 
-## Gift cards across purchases
+- Customer, email, existing birthday and next birthday.
+- Days until birthday, with Today and Next 30 days filters.
+- Available birthday credit, read from native gift cards in the website currency.
+- Next credit expiry and days left to use credit.
+- Whether credit has already been issued this calendar year.
 
-Keep your existing native gift-card program, native products and existing payment provider. Enable it for POS, Sales and Website as appropriate, and keep the reward applicable to the **whole order**, not selected products. Standard native rules still determine eligibility; this connector adds no app-only redemption restriction.
+The available balance excludes expired, empty or inactive cards/programs. Where several cards exist, the expiry column shows the earliest expiry among usable credits. Records without a birthday are not listed; edit the contact’s birthday in its existing field first.
 
-Choose the purchased gift-card programs and existing gift-card products in Customer App settings. Do not select the birthday program as a purchased program. Publish the products on the same website. The app’s buy action opens their native product page and secure checkout; no separate payment processing or price calculation has been added.
+## Issue or adjust birthday credit
 
-A dine-in order does not fund a gift card before native payment. Draft/unpaid online purchase codes are not exposed by the new app endpoints. Online orders require native payment confirmation; fully invoiced and paid native sales are also supported. POS-issued cards require a paid, done or invoiced source order. Cards issued directly by staff remain supported.
+Use **Issue credit** beside a customer. Enter the amount, validity and reason, then confirm. The defaults come from Birthday Settings. Staff may issue before the birthday; it uses the current calendar year’s allowance. Issuing again opens the existing annual credit instead of adding another one.
 
-In the app, **You → Gifts & birthday treats** provides:
+Open **Member Extras → Birthday Credits** for the issue history. The screen now has **Issue credit**, **Update Balance**, and **Open native card** actions:
 
-- Birthday credit and purchased gift-card balances, shown separately from points.
-- Add an existing physical or digital card using its full code. An unassigned card is a bearer card; knowing its valid full code allows it to be linked. A card assigned to another customer cannot be claimed.
-- Buy a card through native checkout. Once paid, return to the wallet; it refreshes automatically.
-- Send an eligible purchased card with a recipient name, email and optional message. Review before confirming. The entire remaining native card is assigned to the recipient contact and removed from the sender’s available cards. Its balance and expiry are not copied or reset. In this first release a card can be sent once through the app.
-- Sent-gift email status: queued, sent or needs attention. Sent means handed off to the mail server, not confirmed inbox delivery. Staff can retry failed mail using the existing Emails screen.
+- **Update Balance** opens Odoo’s own balance adjustment wizard. Enter the new balance and reason there.
+- **Open card / edit expiry** opens the native card for expiry changes and its native history.
+- The original issue amount stays in the award history; the current balance and expiry are read from the card.
 
-An existing recipient contact is reused by normalized email. Ambiguous, archived or internal-user matches require staff help. A new recipient becomes a contact only, never an automatically created user. They can use the emailed code without an app account; verified signup using the same email links them to that contact and card.
+For cards created directly in Odoo’s native birthday program, use **Open native cards** beside the customer. They appear in the app without requiring an award-history record or a claim code. A card already issued in the birthday program this year blocks a second automatic/manual award; adjust that native card instead.
 
-Digital gift cards remain bearer codes: sending a gift does not rotate or invalidate a physical printed code. Treat the code like the physical card. POS still confirms the current remaining balance when it is used.
+Administrators manage these controls. Customer accounts cannot browse other customers’ birthdays or issue credits.
 
-## Event announcements
+## Automatic birthdays
 
-Use **Event Announcements → New**. Write the title and body, select the website and all members or selected members. Publish to the app inbox, or choose a future time and Schedule. The scheduler runs every five minutes. Times follow the administrator’s Odoo timezone.
+The hourly **Jenny’s: birthday credit** scheduled action issues one native card and inbox greeting on the customer’s local birthday. The selected audience determines eligibility. Member-only eligibility uses the existing verified/legacy portal membership and visible loyalty program rules.
 
-Only eligible members with **Events at Jenny’s** enabled receive announcements. This preference is separate from promotional email consent. Publishing twice does not duplicate the message; scheduled/published content is locked. Cancelling a scheduled announcement prevents publication. Existing direct customer messages work as before.
+The issue date is day one: September 23 plus 21 days is valid through October 13. February 29 birthdays use February 28 in non-leap years. Once-per-year protection is per customer and company, including retries and multiple websites in the same company. Missed birthdays are not backdated automatically; staff can issue manually.
 
-Firebase project creation, Android permission handling, device registration and actual background push delivery remain a later stage. No Firebase credentials are required for this test update.
+## Gift cards — automatic, no claiming step
 
-## Test before live use
+1. Staff assign a native gift card to the customer’s contact in Odoo. Its program must be selected under Customer App → Purchased gift card programs.
+2. The card appears automatically in **You → Gifts & birthday treats** on refresh/resume. Digital and physical cards use the same native record. There is no Add code step.
+3. **Buy a gift card** opens the configured, published native product and checkout. Odoo handles price, payment and code generation. After native payment confirmation, return to the app to see the card. Unpaid purchase codes are not exposed.
+4. To give a purchased card, choose **Send as a gift**, enter the recipient’s name/email and review. The entire remaining card is reassigned to that recipient contact and emailed. Balance, code and expiry are not regenerated or reset.
+5. An existing customer sees the card in their account. A new recipient can register with that same email; signup reuses the contact. Receiving a gift alone does not create a login. The recipient may also present the gift email at Jenny’s.
 
-- Existing sign-in, password recovery, card scanning and dine-in → POS → kitchen → pay flow.
-- Birthday amount/expiry, second cron run, changed birthday, next year, leap day, disabled program and separate balances.
-- Own/unassigned/wrong-owner/expired/empty gift-card claims; account isolation and repeated submissions.
-- Native successful, pending, cancelled and failed gift-card payments; no usable card before confirmation. Repeat the provider callback using its normal testing tools; native issuance must remain single.
-- Native POS redemption and online checkout redemption against the same card, including partial balances and refunds handled by Odoo’s existing workflow.
-- Sending to existing and new recipients, duplicate retry, email failure/retry, and signup afterward without duplicate users.
-- Event selection, opt-out, schedule/cancel and repeated publish.
+A card can be sent once through this app flow. Purchased cards and birthday credit stay separate. Gift-card email status is queued, sent or needs attention; sent means handed to the mail server, not confirmed inbox delivery. Staff can retry mail in the existing Emails screen.
 
-Automated Odoo integration tests are included in `tests/test_engagement.py`; run them on a disposable Odoo 19 test database with the connector and its normal dependencies installed. They must not send real customer mail.
+Keep native gift-card rewards applicable to the whole order and enable the sales channels where they should work. Normal Odoo rules still apply. This connector adds no app-only purchase restriction and no custom POS redemption screen. Existing older APKs cannot claim unassigned codes after this connector update either; staff link physical cards to customers in Odoo.
+
+## Focused test on your test instance
+
+1. Configure the birthday program, amount and source date field. Check a customer who has not signed up appears in Customer Birthdays with the expected date/countdown.
+2. Issue 100 with 21 days. Confirm one native card and one award record, correct expiry and an app balance of 100. Repeat Issue credit; no second award should appear.
+3. Use native Update Balance to change to 75. Confirm the app shows 75 after refresh. Use the native card form to change expiry and check the countdown.
+4. Select a test customer with today’s birthday. Run the birthday job twice with each audience setting. Confirm member-only excludes nonmembers and all-customer mode includes them without duplicates.
+5. Assign a purchased gift card directly in Odoo. Confirm it appears without code entry. Check another account cannot see it.
+6. Buy through native checkout, return after payment, then send to an existing and a new test recipient. Confirm ownership, unchanged balance, mail status and later signup reuse. Also check pending/cancelled payments reveal no usable code.
+7. Redeem part of the balance in native POS and refresh the app. Continue existing order → POS → kitchen → pay testing, including native refunds and point awards.
+
+Use test contacts and mailboxes only. Automated Odoo tests are supplied in tests/test_engagement.py, but still require a disposable Odoo 19 database. Flutter tests and static checks cannot replace the Cloudpepper module-upgrade and native POS/payment checks.

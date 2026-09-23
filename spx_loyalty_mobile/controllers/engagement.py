@@ -51,9 +51,10 @@ class EngagementAPI(MobileAPI):
         today = w._spx_today()
         gifts = self._gift_cards(w, partner)
         already_sent = request.env['spx.mobile.gift.delivery'].sudo().search([('card_id', 'in', gifts.ids)]).card_id
-        awards = request.env['spx.mobile.birthday.award'].sudo().search([
-            ('website_id', '=', w.id), ('partner_id', '=', partner.id)], limit=10)
-        birthday = [dict(self._card_data(a.card_id, today), kind='birthday') for a in awards if a.card_id.active and a.card_id.program_id.active and a.card_id.partner_id == partner]
+        # Native partner assignment is authoritative, including staff-issued cards.
+        cards = w._spx_birthday_cards(partner)
+        birthday = [dict(self._card_data(c, today), kind='birthday')
+            for c in cards if c.active and c.program_id.active and self._issued_card(c)]
         products = w.spx_gift_product_ids.filtered(lambda p: p.active and p.sale_ok and p.is_published
             and (not p.website_id or p.website_id == w) and (not p.company_id or p.company_id == w.company_id)
             and any(v in self._gift_programs(w).filtered('ecommerce_ok').trigger_product_ids for v in p.product_variant_ids))
@@ -64,25 +65,13 @@ class EngagementAPI(MobileAPI):
             'sent_gifts': [{'id': d.id, 'email': d.recipient_email,
                 'state': 'sent' if d.mail_id.state == 'sent' else 'failed' if d.mail_id.state in ('exception', 'cancel') else 'queued',
                 'date': self._date(d.create_date)} for d in deliveries],
-            'can_add': bool(self._gift_programs(w)), 'announcements': partner.sudo().spx_member_announcements}
+            'can_add': False, 'announcements': partner.sudo().spx_member_announcements}
 
     @http.route('/spx/mobile/v1/gifts/add', type='jsonrpc', auth='user', website=True, methods=['POST'])
     def add_gift(self, code):
         w, partner = self._scope()
-        self._gift_rate(w, partner)
-        if not isinstance(code, str) or not 1 <= len(code.strip()) <= 128:
-            raise UserError(_('Enter the full gift card code.'))
-        c = request.env['loyalty.card'].sudo().search([('code', '=', code.strip()), ('program_id', 'in', self._gift_programs(w).ids)], limit=1)
-        if c:
-            request.env.cr.execute('SELECT id FROM loyalty_card WHERE id = %s FOR UPDATE', (c.id,))
-            c.invalidate_recordset()
-        if (not c or not c.active or c.points <= 0 or (c.expiration_date and c.expiration_date < w._spx_today())
-                or (c.partner_id and c.partner_id != partner) or not self._issued_card(c)):
-            raise UserError(_('This card cannot be added. Check the code or ask Jenny’s for help.'))
-        # The full code is a bearer credential for an unassigned physical/digital card.
-        if not c.partner_id:
-            c.write({'partner_id': partner.id})
-        return {'ok': True}
+        # Older app builds must not claim an unassigned bearer code either.
+        raise UserError(_('Cards linked to your account appear automatically. Ask Jenny’s to link a physical card to your customer account.'))
 
     @http.route('/spx/mobile/v1/gifts/send', type='jsonrpc', auth='user', website=True, methods=['POST'])
     def send_gift(self, card_id, recipient_email, recipient_name, message='', key=None):
@@ -118,7 +107,8 @@ class EngagementAPI(MobileAPI):
         request.env['spx.mobile.registration'].sudo()._lock_email(email)
         matches = request.env['res.partner'].sudo().with_context(active_test=False).search([
             '|', ('email_normalized', '=', email), ('email', '=ilike', escape_psql(email))])
-        if len(matches) > 1 or (matches and (matches.is_company or matches.parent_id or not matches.active or any(not u.share for u in matches.user_ids))):
+        if len(matches) > 1 or (matches and (matches.is_company or matches.parent_id or not matches.active
+                or (matches.company_id and matches.company_id != w.company_id) or any(not u.share for u in matches.user_ids))):
             raise UserError(_('Please ask Jenny’s to help send this gift to that recipient.'))
         recipient = matches or request.env['res.partner'].sudo().create({'name': recipient_name.strip(), 'email': email,
             'company_type': 'person'})

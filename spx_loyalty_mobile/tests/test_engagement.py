@@ -80,16 +80,74 @@ class TestMemberExtras(TransactionCase):
         self.assertNotIn(other.id, ids)
         self.assertNotIn(draft.id, ids)
 
-    def test_bearer_card_claim_is_owned_and_other_owner_is_denied(self):
-        c = self.card()
+    def test_old_app_cannot_claim_an_unassigned_card(self):
+        card = self.card()
         p1, p2 = self.request_patches()
-        with p1, p2, patch.object(self.controller, '_gift_rate'):
-            self.controller.add_gift(c.code)
-            self.controller.add_gift(c.code)
-            self.assertEqual(c.partner_id, self.partner)
-            other = self.card(partner_id=self.env.ref('base.partner_root').id)
+        with p1, p2:
             with self.assertRaises(UserError):
-                self.controller.add_gift(other.code)
+                self.controller.add_gift(card.code)
+        self.assertFalse(card.partner_id)
+
+    def test_native_birthday_assignment_appears_without_award_or_claim(self):
+        card = self.env['loyalty.card'].with_context(loyalty_no_mail=True).create({
+            'program_id': self.birthday.id, 'partner_id': self.partner.id, 'points': 80})
+        p1, p2 = self.request_patches()
+        with p1, p2:
+            cards = self.controller.wallet()['birthday_credits']
+        self.assertEqual([c['id'] for c in cards], [card.id])
+        self.assertEqual(cards[0]['number'], card.code)
+        card.points = 35
+        with p1, p2:
+            self.assertEqual(self.controller.wallet()['birthday_credits'][0]['balance'], 35)
+
+    def test_staff_issue_is_once_and_adjustment_is_native(self):
+        wizard = self.env['spx.mobile.birthday.issue'].create({
+            'website_id': self.website.id, 'partner_id': self.partner.id,
+            'amount': 75, 'days': 21, 'reason': 'Approved birthday test'})
+        action = wizard.action_issue()
+        wizard.action_issue()
+        award = self.env['spx.mobile.birthday.award'].search([('partner_id', '=', self.partner.id)])
+        self.assertEqual(len(award), 1)
+        self.assertEqual(action['res_model'], 'loyalty.card')
+        self.assertEqual(action['res_id'], award.card_id.id)
+        self.assertEqual(award.card_id.points, 75)
+        self.assertEqual(award.action_adjust_native_balance()['res_model'], 'loyalty.card.update.balance')
+        self.assertEqual(award.card_id.expiration_date, self.website._spx_today() + timedelta(days=20))
+        self.assertEqual(sum(award.card_id.history_ids.mapped('issued')), 75)
+
+    def test_customer_birthdays_include_nonmembers_and_respect_audience(self):
+        customer = self.env['res.partner'].create({'name': 'Walk-in customer', 'spx_mobile_birthday': date(1990, 9, 23)})
+        self.assertIn(customer, self.website._spx_birthday_customers())
+        with patch.object(type(self.website), '_spx_today', return_value=date(2026, 9, 23)):
+            self.env['spx.mobile.birthday.award']._cron_birthdays()
+            self.assertFalse(self.env['spx.mobile.birthday.award'].search([('partner_id', '=', customer.id)]))
+            self.website.spx_birthday_audience = 'customers'
+            self.env['spx.mobile.birthday.award']._cron_birthdays()
+            self.assertEqual(len(self.env['spx.mobile.birthday.award'].search([('partner_id', '=', customer.id)])), 1)
+            view = customer.with_context(spx_birthday_website_id=self.website.id)
+            self.assertEqual(view.spx_birthday_countdown, 0)
+            self.assertEqual(view.spx_birthday_balance, 100)
+            self.assertEqual(view.spx_birthday_remaining, 21)
+            # Odoo 19 normalizes '=' to 'in' before calling custom search methods.
+            self.assertIn(customer, self.env['res.partner'].with_context(
+                spx_birthday_website_id=self.website.id).search([('spx_birthday_countdown', '=', 0)]))
+
+    def test_portal_user_cannot_issue_or_inspect_birthdays(self):
+        with self.assertRaises(AccessError):
+            self.website.with_user(self.user).action_spx_birthday_customers()
+        with self.assertRaises(AccessError):
+            self.env['spx.mobile.birthday.issue'].with_user(self.user).create({
+                'website_id': self.website.id, 'partner_id': self.partner.id, 'amount': 1, 'days': 21})
+
+    def test_configured_existing_birthday_field_is_read_without_copying(self):
+        field = self.env['ir.model.fields'].create({'name': 'x_existing_birthday', 'field_description': 'Existing birthday',
+            'model_id': self.env.ref('base.model_res_partner').id, 'ttype': 'date', 'state': 'manual'})
+        self.website.spx_birthday_field_id = field
+        self.partner.write({'x_existing_birthday': date(1985, 12, 31)})
+        self.assertEqual(self.website._spx_birth_date(self.partner), date(1985, 12, 31))
+        self.assertEqual(self.partner.spx_mobile_birthday, date(1990, 9, 23))
+        self.partner.x_existing_birthday = False
+        self.assertEqual(self.website._spx_birth_date(self.partner), self.partner.spx_mobile_birthday)
 
     def test_send_is_idempotent_reuses_contact_and_creates_no_user(self):
         c = self.card(partner_id=self.partner.id)
