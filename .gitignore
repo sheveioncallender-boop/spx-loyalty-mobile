@@ -1,3 +1,12 @@
 __pycache__/
 *.py[cod]
 .env
+*.jks
+*.keystore
+key.properties
+local.properties
+mobile/app/android/.kotlin/
+mobile/app/.dart_tool/
+mobile/app/build/
+jennys-connection.json
+mobile/app/test/failures/

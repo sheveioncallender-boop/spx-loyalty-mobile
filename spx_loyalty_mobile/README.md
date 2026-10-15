@@ -1,3 +1,11 @@
+# Jenny’s connector 19.0.4.2.0 — retention and deployment
+
+Deploy both `spx_loyalty_mobile` and `spx_loyalty_mobile_data`, then **upgrade the installed connector before testing uninstall**. Normal uninstall preserves app records in the passive data dependency. Explicit full removal is available through **Uninstall options**, with confirmation. Native Odoo business records remain in either case.
+
+See `../INSTALL_AND_RETENTION.md` for the test gate, migration, publisher-side APK configuration and clean-removal behaviour. This branch still requires Odoo install/upgrade/uninstall/reinstall and native transaction acceptance testing before live use.
+
+---
+
 # Jenny’s member extras — connector 19.0.4.1.0
 
 Deploy and **upgrade this existing module**, do not uninstall. Restart after the upgrade completes. This release adds fields and models, so restarting alone is insufficient.

@@ -1,14 +1,14 @@
 {
     'name': "Jenny's Rewards",
-    'version': '19.0.4.1.0',
+    'version': '19.0.4.2.0',
     'summary': "Jenny's customer cards, loyalty, messages and mobile app",
     'author': 'SPXCORP LTD',
     'license': 'LGPL-3',
-    'depends': ['website_sale_loyalty', 'pos_loyalty', 'pos_restaurant', 'portal', 'mail', 'auth_signup'],
+    'depends': ['spx_loyalty_mobile_data'],
     'data': [
         'security/ir.model.access.csv',
-        'security/rules.xml',
         'views/mobile_views.xml',
+        'views/lifecycle_views.xml',
         'views/engagement_views.xml',
         'views/birthday_views.xml',
         'data/engagement_cron.xml',
@@ -22,6 +22,7 @@
         ],
     },
     'post_init_hook': 'preserve_existing_members',
+    'uninstall_hook': 'disconnect_app',
     'installable': True,
     'application': True,
 }

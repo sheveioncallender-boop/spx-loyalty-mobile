@@ -1,8 +1,1 @@
-from . import mobile
-
-from . import onboarding
-
-from . import engagement
-from . import gifts
-
-from . import birthday_management
+from . import mobile, onboarding, engagement, gifts, birthday_management, lifecycle

@@ -1,7 +1,8 @@
 """Staff management for birthdays. Native loyalty cards own all usable value."""
+
+
 import math
 from datetime import timedelta
-
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from .engagement import birthday_in_year
@@ -101,14 +102,21 @@ class Partner(models.Model):
     _inherit = 'res.partner'
 
     spx_birthday_date = fields.Date('Birthday', compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_next = fields.Date('Next birthday', compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_countdown = fields.Integer('Days until birthday', compute='_compute_birthday_overview',
         search='_search_birthday_countdown', groups='base.group_system')
+
     spx_birthday_currency_id = fields.Many2one('res.currency', compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_balance = fields.Monetary('Available birthday credit', currency_field='spx_birthday_currency_id',
         compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_expiry = fields.Date('Next credit expiry', compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_remaining = fields.Integer('Days left to use credit', compute='_compute_birthday_overview', groups='base.group_system')
+
     spx_birthday_issued = fields.Boolean('Issued this year', compute='_compute_birthday_overview', groups='base.group_system')
 
     def _birthday_website(self):
@@ -183,7 +191,6 @@ class Partner(models.Model):
 class BirthdayAward(models.Model):
     _inherit = 'spx.mobile.birthday.award'
 
-    reason = fields.Char(readonly=True)
     days_remaining = fields.Integer('Days left to use credit', compute='_compute_remaining')
 
     def _compute_remaining(self):
