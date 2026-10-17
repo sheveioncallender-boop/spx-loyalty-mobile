@@ -143,10 +143,10 @@ void main() {
     );
     await tester.tap(find.text('You').last);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Leave preview'), 400);
+    await tester.scrollUntilVisible(find.text('Leave preview').hitTestable(), 200);
     await tester.tap(find.text('Leave preview'));
     await tester.pumpAndSettle();
-    expect(find.text('Sign in to Jenny’s'), findsOneWidget);
+    expect(find.byType(Welcome), findsOneWidget);
     expect(tester.takeException(), isNull);
     await decodedImages();
     await expectLater(

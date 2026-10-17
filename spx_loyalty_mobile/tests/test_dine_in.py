@@ -71,10 +71,56 @@ class TestDineInNative(TestPoSCommon):
         self.assertEqual(self.env['loyalty.history'].search_count([]), history_before)
         self.assertEqual(order.lines.product_id, self.product)
         self.assertEqual(order.amount_total, cart['total'])
+        self.assertRegex(order.ticket_code, r'^[0-9a-z]{5}$')
         tags = json.loads(order.internal_note)
         self.assertIsInstance(tags, list)
         self.assertTrue(all(isinstance(tag.get('text'), str) for tag in tags))
         self.assertTrue(all(isinstance(tag.get('colorIndex'), int) for tag in tags))
+
+    def _submitted_order(self):
+        with self.as_customer():
+            cart = self.api.dine_add(self.product.id, 1)
+            result = self.api.dine_submit(cart['basket_key'], cart['quote'])
+        return self.env['pos.order'].search([('pos_reference', '=', result['order']['name'])])
+
+    def test_native_partial_and_full_payment_refresh_display_difference(self):
+        order = self._submitted_order()
+        code = order.ticket_code
+        method = self.config.payment_method_ids[:1]
+        for amount, expected in [(40, -60), (60, 0)]:
+            order.add_payment({'pos_order_id': order.id, 'amount': amount,
+                               'payment_method_id': method.id})
+            self.assertEqual(order.amount_difference, expected)
+        order._process_saved_order(False)
+        self.assertEqual(order.state, 'paid')
+        self.assertEqual(order.amount_paid, 100)
+        self.assertEqual(order.amount_total, 100)
+        self.assertEqual(len(order.payment_ids), 2)
+        self.assertEqual(order.ticket_code, code)
+
+    def test_upgrade_metadata_repair_is_scoped_and_idempotent(self):
+        order = self._submitted_order()
+        order.add_payment({'pos_order_id': order.id, 'amount': 100,
+                           'payment_method_id': self.config.payment_method_ids[:1].id})
+        order._process_saved_order(False)
+        order.write({'amount_difference': -100, 'ticket_code': False})
+        unrelated = order.copy({'state': 'draft', 'amount_paid': 0,
+                                'payment_ids': [], 'ticket_code': False,
+                                'amount_difference': -321})
+        models = ['pos.payment', 'payment.transaction', 'account.payment', 'account.move', 'loyalty.history']
+        before = {model: self.env[model].search_count([]) for model in models}
+        (order | unrelated)._spx_repair_app_order_metadata()
+        code = order.ticket_code
+        (order | unrelated)._spx_repair_app_order_metadata()
+        self.assertEqual(order.amount_difference, 0)
+        self.assertRegex(code, r'^[0-9a-z]{5}$')
+        self.assertEqual(order.ticket_code, code)
+        self.assertEqual(order.state, 'paid')
+        self.assertEqual(order.amount_paid, 100)
+        self.assertEqual(order.amount_total, 100)
+        self.assertFalse(unrelated.ticket_code)
+        self.assertEqual(unrelated.amount_difference, -321)
+        self.assertEqual(before, {model: self.env[model].search_count([]) for model in models})
 
     def test_price_edit_requires_new_review_and_unpublish_blocks_submission(self):
         with self.as_customer():

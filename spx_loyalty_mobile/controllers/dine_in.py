@@ -1,7 +1,7 @@
 """Authenticated baskets -> new, unpaid native POS orders.
 
-No POS assets, model overrides, table assignment, kitchen dispatch, payments or
-loyalty writes. Staff own those actions in Odoo's unmodified POS interface.
+No table assignment, kitchen dispatch, payments or loyalty writes here.
+Staff own those actions in Odoo's native POS interface.
 """
 import hashlib
 import json
@@ -288,8 +288,10 @@ class DineInAPI(MobileAPI):
         if not cart['can_submit'] or cart['quote'] != quote:
             return {'status': 'changed', 'cart': cart}
         order_uuid = str(uuid4())
+        native = request.env['pos.order'].sudo().with_company(website.company_id)
         values.update({
             'uuid': order_uuid, 'source': 'pos', 'table_id': False,
+            'ticket_code': native._spx_new_ticket_code(),
             'floating_order_name': _('App · %s', partner.name),
             # Native OrderDisplay/TagsList expects a JSON array of note objects.
             'internal_note': json.dumps([{
@@ -299,7 +301,6 @@ class DineInAPI(MobileAPI):
             'payment_ids': [], 'to_invoice': False,
             'lines': [Command.create({**line, 'uuid': str(uuid4())}) for line in line_values],
         })
-        native = request.env['pos.order'].sudo().with_company(website.company_id)
         native.sync_from_ui([values])
         order = native.search([('uuid', '=', order_uuid), ('partner_id', '=', partner.id),
                                ('company_id', '=', website.company_id.id), ('config_id', '=', config.id)], limit=1)

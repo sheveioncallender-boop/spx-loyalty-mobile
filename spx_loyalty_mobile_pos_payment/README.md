@@ -1,5 +1,22 @@
 # Native POS checkout from the app
 
+## Android 0.9.1 / Jenny's Rewards 19.0.4.5.1
+
+The home screen now has a visible **Your orders & bill** card. It opens the
+existing orders screen and its cashier-prepared Pay action. The shortcut under
+You remains available. Dine-in payment readiness is unchanged.
+
+App-created orders now receive the native five-character receipt code. After
+native `add_payment`, the app integration refreshes only the stored difference
+display for orders linked to an app submission, using Odoo's paid-minus-total
+formula. It does not create another payment or alter taxes, totals, accounting,
+payment state or loyalty. Other POS orders are unaffected.
+
+Upgrading **Jenny's Rewards** to **19.0.4.5.1** repairs the stale difference and
+missing receipt codes on existing app-linked orders. The repair is idempotent
+and preserves existing codes. Reload the POS after upgrading to see repaired
+receipt metadata. No separate Scotia update is required.
+
 This optional adapter depends on Jenny's Rewards and Odoo's `pos_online_payment`.
 It adds no persistent models, POS methods, payment transactions or accounting overrides.
 

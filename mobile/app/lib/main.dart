@@ -1077,6 +1077,47 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       style: Theme.of(context).textTheme.headlineLarge,
     ),
     const SizedBox(height: 24),
+    Material(
+      color: navy,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        key: const ValueKey('home-orders-bill'),
+        onTap: orderHistory,
+        borderRadius: BorderRadius.circular(22),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, color: Colors.white, size: 27),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your orders & bill',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Track your order. Pay when your bill is ready.',
+                      style: TextStyle(color: Color(0xFFDCE5F4), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 21),
+            ],
+          ),
+        ),
+      ),
+    ),
+    const SizedBox(height: 16),
     GestureDetector(
       onTap: () => go(3),
       child: Container(
