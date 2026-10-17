@@ -28,7 +28,7 @@ class MobilePOSCheckout(DineInAPI):
     def _order_data(self, order):
         return {**super()._order_data(order), 'payment_offer': self._payment_offer(order)}
 
-    @http.route()
+    @http.route(type='jsonrpc', auth='user', website=True, methods=['POST'])
     def dine_orders(self):
         return super().dine_orders()
 

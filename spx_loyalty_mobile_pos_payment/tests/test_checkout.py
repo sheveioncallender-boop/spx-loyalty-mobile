@@ -79,13 +79,16 @@ class TestMobilePOSCheckout(TestDineInNative):
             self.api.dine_payment(order.id)
 
     def test_paid_cancelled_closed_and_withdrawn_offers_are_rejected(self):
-        order = self.make_order()
-        order.get_and_set_online_payments_data(100.0)
         for state in ['paid', 'done', 'cancel']:
+            # Independent records: native Odoo correctly forbids reopening or
+            # changing a bill after it is paid.
+            order = self.make_order()
+            order.get_and_set_online_payments_data(100.0)
             order.state = state
             with self.as_customer(), self.assertRaises(UserError):
                 self.api.dine_payment(order.id)
-        order.state = 'draft'
+        order = self.make_order()
+        order.get_and_set_online_payments_data(100.0)
         order.session_id.state = 'closing_control'
         with self.as_customer(), self.assertRaises(UserError):
             self.api.dine_payment(order.id)
