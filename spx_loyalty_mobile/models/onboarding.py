@@ -10,7 +10,6 @@ import re
 import secrets
 import time
 from datetime import timedelta
-from urllib.parse import urlparse
 from markupsafe import Markup, escape
 from odoo import api, fields, models, Command, SUPERUSER_ID, _
 from odoo.exceptions import UserError, ValidationError, AccessDenied
@@ -59,33 +58,53 @@ def password_value(value):
 class Website(models.Model):
     _inherit = 'website'
 
+    def _mobile_signup_setup_issues(self):
+        """Detailed administrator guidance; never returned by the public API."""
+        self.ensure_one()
+        issues = []
+        if not self.spx_mobile_enabled:
+            issues.append(_('Enable the customer app.'))
+        p = self.spx_mobile_signup_program_id
+        if not p:
+            issues.append(_('Choose the loyalty program for new members.'))
+        elif (not p.active or p.program_type != 'loyalty'
+              or (p.company_id and p.company_id != self.company_id)
+              or (p.website_id and p.website_id != self._origin)):
+            issues.append(_('Choose an active loyalty program for this website and company.'))
+        elif p not in self.spx_mobile_program_ids:
+            issues.append(_('Include the new-member program in Visible loyalty programs.'))
+        for value, message in (
+            (self.spx_mobile_terms, _('Enter the approved account and rewards terms.')),
+            (self.spx_mobile_privacy, _('Enter the approved privacy policy.')),
+            (self.spx_mobile_policy_version, _('Enter the policy version.')),
+        ):
+            if not (value or '').strip():
+                issues.append(message)
+        try:
+            email_value(self.spx_mobile_mail_from)
+        except UserError:
+            issues.append(_('Enter a valid account email sender authorized by your mail provider.'))
+        from .lifecycle import connection_origin
+        try:
+            connection_origin(self.spx_mobile_account_origin)
+        except UserError:
+            issues.append(_('Enter the public HTTPS address without /odoo or any other path.'))
+        return issues
+
     def _mobile_signup_config(self):
         self.ensure_one()
-        p = self.spx_mobile_signup_program_id
-        origin = (self.spx_mobile_account_origin or '').rstrip('/')
-        uri = urlparse(origin)
-        if (not self.spx_mobile_enabled or not self.spx_mobile_signup_enabled or not p
-                or not p.active or p.program_type != 'loyalty'
-                or p not in self.spx_mobile_program_ids
-                or (p.company_id and p.company_id != self.company_id)
-                or (p.website_id and p.website_id != self)
-                or not self.spx_mobile_terms or not self.spx_mobile_privacy
-                or not self.spx_mobile_policy_version or not self.spx_mobile_mail_from
-                or uri.scheme != 'https' or not uri.hostname or uri.path
-                or uri.query or uri.fragment or uri.username or uri.password):
+        if not self.spx_mobile_signup_enabled or self._mobile_signup_setup_issues():
             raise UserError(_('Joining is temporarily unavailable. Please contact Jenny’s or try again later.'))
-        email_value(self.spx_mobile_mail_from)
-        return origin
+        return self.spx_mobile_account_origin.strip().rstrip('/')
 
     @api.constrains('spx_mobile_signup_enabled', 'spx_mobile_signup_program_id', 'spx_mobile_program_ids',
                     'spx_mobile_mail_from', 'spx_mobile_account_origin', 'spx_mobile_terms', 'spx_mobile_privacy',
                     'spx_mobile_policy_version')
     def _check_mobile_signup_config(self):
         for w in self.filtered('spx_mobile_signup_enabled'):
-            try:
-                w._mobile_signup_config()
-            except UserError as e:
-                raise ValidationError(_('Complete the signup program, visible programs, HTTPS account origin, sender, terms, privacy and policy version before enabling signup.')) from e
+            issues = w._mobile_signup_setup_issues()
+            if issues:
+                raise ValidationError(_('Before enabling member signup:\n%s', '\n'.join('- ' + issue for issue in issues)))
 
 
 class Users(models.Model):

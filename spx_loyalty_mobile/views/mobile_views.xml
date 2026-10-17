@@ -11,9 +11,12 @@
                         <div><h2 class="mb-1">Jenny’s Rewards</h2><p class="mb-0 text-muted">Customer app settings for this website</p></div>
                     </div>
                     <group>
+                        <field name="company_id" invisible="1"/>
                         <field name="spx_mobile_enabled"/>
                         <field name="spx_mobile_brand"/>
-                        <field name="spx_mobile_program_ids" widget="many2many_tags"/>
+                        <field name="spx_mobile_program_ids" widget="many2many_tags"
+                               domain="[('program_type', '=', 'loyalty'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, id])]"
+                               options="{'no_create': True}"/>
                         <field name="spx_mobile_pos_config_id" options="{'no_create': True}"/>
                     </group>
                     <p>Odoo manages all loyalty rules, points and rewards. Only the selected programs are visible in the customer app. Sign in with an individual customer portal account.</p>

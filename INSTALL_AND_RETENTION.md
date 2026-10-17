@@ -1,4 +1,4 @@
-# Jenny’s connector 19.0.4.2.0 and Android 0.8.0+15
+# Jenny’s connector 19.0.4.3.0 and Android 0.8.0+15
 
 This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1+14. It is not cleared for the live customer database until the lifecycle and business-flow tests below pass on a disposable Odoo 19 instance.
 
@@ -19,13 +19,29 @@ This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1
 3. The data dependency’s pre-install hook changes schema ownership in place. It does not copy, recreate, renumber or export business records.
 4. Verify the expected versions and record IDs before testing uninstall. Keep both addon folders available while the data dependency remains installed, including while the connector is uninstalled.
 
-Fresh instances: install **Jenny’s Rewards**; its data dependency installs automatically. Select the instance’s own website, loyalty/gift programs and POS. No demo contacts, products, balances or old-instance data are installed.
+Fresh instances: install **Jenny’s Rewards**; its data dependency installs automatically. Open **Jenny’s Rewards → App setup**. No demo contacts, products, balances or old-instance data are installed.
+
+## Guided setup (19.0.4.3.0)
+
+The overview now puts **Open setup checklist** first. With one available website, it opens that website directly; with several, the administrator chooses one. The screen groups connection/loyalty and member signup into two tabs and shows the next action for each feature.
+
+1. Use **Use detected settings** to fill blank connection, program and restaurant-POS fields only when the choice is unambiguous. Existing selections are kept. With several websites, the global Odoo URL is never borrowed for another website. This action does not enable the app/signup, create programs or change earning/reward rules.
+2. Review **Connection and loyalty**, choose the existing loyalty-card program and enable the app. **Manage loyalty programs** opens native Odoo with the correct program type and website/company defaults. The program picker filters by type, active state, company and website and disables quick creation, avoiding Odoo's unrelated default promotion type.
+3. Complete **Member signup** with the new-member program, an authorized email sender, policy version, and approved terms/privacy text. Enable signup when these are complete. Missing-field errors now identify the specific next actions. Customer-facing failures remain generic.
+4. Review email delivery and ordering. The checklist does not send email, authenticate to SMTP or submit orders. No configured mail-server record is reported as a warning rather than proof that host-provided mail cannot work. A configured server still requires a delivery test. Ordering needs published POS products and an open register; staff retain control of kitchen dispatch and payment.
+5. The publisher downloads the matching **Publisher connection file** and tests the configured app. **Optional features** contains birthday credit and gift cards; these do not block basic loyalty setup.
+
+An automatic promotion (even one named “Loyalty”) is not a loyalty-card program. Setup does not convert existing promotions, duplicate discounts, invent points/redemption rules, publish products, supply policy text or configure SMTP credentials. These are instance-specific business choices.
+
+For existing installations, deploy this branch and upgrade **Jenny’s Rewards**; do not uninstall to receive the setup improvements. The passive data addon remains at 19.0.4.2.0. No Android rebuild is needed for these administrator-only setup changes when the instance address is unchanged.
+
+Validation: the updated addon imports against official Odoo 19 source, all addon Python/XML parses, and seven database-free tests of the actual signup validation, public error boundary, HTML escaping and administrator guard pass. Seven additional native ORM regression tests are included in `spx_loyalty_mobile/tests/test_setup.py`; they require an isolated PostgreSQL-backed Odoo database and have not been executed here. Native view installation, the setup screen in a running registry, and the full lifecycle/device checks still require test-instance verification.
 
 Use the same addon package on compatible Odoo 19 Community or Enterprise installations with the declared native dependencies. Cloudpepper/Odoo.sh database routing, website domains, SMTP and native POS/payment configuration remain the host’s responsibility. An HTTPS address alone cannot configure those services.
 
 ## Publisher-side app connection
 
-In **Jenny’s Rewards → App connection**, select the website and enter its public HTTPS origin, without `/odoo`. The database is read from this instance. Download `jennys-connection.json` and save the account-link address. Enable the customer app and set its existing programs/POS. For multiple websites, Odoo must map the chosen host to the correct website.
+In **Jenny’s Rewards → App setup → Publisher connection file**, enter the website's public HTTPS origin, without `/odoo`. The database is read from this instance. Download `jennys-connection.json` and save the account-link address. Return to App setup for the remaining checklist. For multiple websites, Odoo must map the chosen host to the correct website.
 
 Keep the connection file outside Git. It contains address/database identifiers only; no administrator password or API key belongs in an APK.
 

@@ -6,3 +6,4 @@ from . import test_onboarding
 
 from . import test_engagement
 from . import test_lifecycle
+from . import test_setup

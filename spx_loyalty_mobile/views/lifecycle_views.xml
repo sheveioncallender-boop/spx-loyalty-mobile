@@ -33,7 +33,7 @@
                     <field name="database"/><field name="config_filename" invisible="1"/>
                     <field name="config_file" filename="config_filename" readonly="1"/>
                 </group>
-                <p>Download the connection file for the Android/iOS build, then save the account-link address. Changing these details does not redirect an already installed APK. On multi-website instances, map this origin to the selected website in Odoo. Enable the customer app and configure the existing loyalty programs and POS separately.</p>
+                <p>Download the connection file for the Android/iOS build, then save the account-link address. Changing these details does not redirect an already installed APK. On multi-website instances, map this origin to the selected website in Odoo. Use App setup for the remaining settings and readiness checklist.</p>
                 <footer><button name="action_apply" type="object" string="Save account-link address" class="btn-primary"/>
                     <button special="cancel" string="Close" class="btn-secondary"/>
                 </footer>

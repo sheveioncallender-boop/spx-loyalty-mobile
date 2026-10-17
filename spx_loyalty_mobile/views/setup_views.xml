@@ -1,0 +1,70 @@
+<odoo>
+    <record id="website_app_setup_form" model="ir.ui.view">
+        <field name="name">website.form.spx.app.setup</field>
+        <field name="model">website</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="App setup" create="false" delete="false">
+                <header>
+                    <button name="action_mobile_detect_settings" type="object" string="Use detected settings" class="btn-primary"/>
+                    <button name="action_mobile_connection" type="object" string="Publisher connection file"/>
+                    <button name="action_mobile_optional_features" type="object" string="Optional features"/>
+                </header>
+                <sheet>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="/spx_loyalty_mobile/static/description/icon.png" alt="Jenny’s Rewards" width="56" height="56" class="rounded-circle"/>
+                        <div><h1>Set up your customer app</h1><p class="text-muted mb-0">Complete the essentials, review the checklist, then test the app with your publisher.</p></div>
+                    </div>
+                    <p>Use detected settings fills empty fields only when there is one compatible choice. It does not create programs, change earning rules or enable features.</p>
+                    <field name="spx_mobile_setup_status" nolabel="1" readonly="1"/>
+                    <notebook>
+                        <page string="1. Connection and loyalty">
+                            <group>
+                                <group string="Website and app">
+                                    <field name="name" readonly="1"/>
+                                    <field name="company_id" readonly="1"/>
+                                    <field name="spx_mobile_account_origin" string="Public HTTPS address" placeholder="https://your-odoo-instance.example"/>
+                                    <field name="spx_mobile_brand"/>
+                                    <field name="spx_mobile_enabled"/>
+                                </group>
+                                <group string="Loyalty and ordering">
+                                    <field name="spx_mobile_program_ids" widget="many2many_tags"
+                                           domain="[('program_type', '=', 'loyalty'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, id])]"
+                                           options="{'no_create': True}"/>
+                                    <button name="action_mobile_programs" type="object" string="Manage loyalty programs" class="btn-link"/>
+                                    <field name="spx_mobile_pos_config_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                            <p>Choose your existing loyalty program. If none exists, use Manage loyalty programs to create one with your approved points and rewards. Ordering is optional; select a restaurant POS to enable it.</p>
+                        </page>
+                        <page string="2. Member signup">
+                            <p>New members receive a verification email. Complete the program, sender and approved policies before switching signup on.</p>
+                            <group>
+                                <field name="spx_mobile_signup_program_id" domain="[('id', 'in', spx_mobile_program_ids)]" options="{'no_create': True}"/>
+                                <field name="spx_mobile_mail_from"/>
+                                <field name="spx_mobile_policy_version"/>
+                                <field name="spx_mobile_signup_enabled"/>
+                            </group>
+                            <group><field name="spx_mobile_terms"/><field name="spx_mobile_privacy"/></group>
+                            <button name="action_mobile_email_settings" type="object" string="Outgoing email settings" class="btn-link"/>
+                            <p>Your publisher should verify delivery before release. Saving an email address alone does not configure a mail server.</p>
+                        </page>
+                    </notebook>
+                    <div class="alert alert-info mt-3" role="status">
+                        <strong>After saving:</strong> use the matching Android/iOS build and test signup, email verification, sign-in, loyalty and a staff-controlled POS order. The checklist checks configuration; it does not send emails or place orders.
+                    </div>
+                    <p class="text-muted">Birthday credit and gift cards are available under Optional features. Connection details and setup tools are visible only to administrators. Ordinary connector uninstall keeps app records for reinstall.</p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="mobile_setup_action" model="ir.actions.server">
+        <field name="name">App setup</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_mobile_setup()</field>
+        <field name="group_ids" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+    <menuitem id="mobile_setup_menu" name="App setup" parent="mobile_menu" action="mobile_setup_action" sequence="2" groups="base.group_system"/>
+    <record id="mobile_settings_menu" model="ir.ui.menu"><field name="name">Advanced settings</field><field name="sequence">90</field></record>
+</odoo>

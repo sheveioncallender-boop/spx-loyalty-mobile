@@ -18,10 +18,19 @@ class Website(models.Model):
     def _check_mobile_programs(self):
         for website in self:
             for program in website.spx_mobile_program_ids:
-                if program.program_type != 'loyalty' or (
-                    program.company_id and program.company_id != website.company_id
-                ) or (program.website_id and program.website_id != website):
-                    raise ValidationError(_('Choose loyalty programs for this website and company.'))
+                reason = False
+                if program.program_type != 'loyalty':
+                    reason = _('its program type is not Loyalty Cards')
+                elif program.company_id and program.company_id != website.company_id:
+                    reason = _('it belongs to another company')
+                elif program.website_id and program.website_id != website:
+                    reason = _('it is restricted to another website')
+                if reason:
+                    raise ValidationError(_(
+                        '“%(program)s” cannot be shown in this app because %(reason)s. '
+                        'Remove it from Visible loyalty programs and choose a compatible program in App setup. '
+                        'The program and customer balances will remain in Odoo.',
+                        program=program.display_name, reason=reason))
 
 
 class MobileMessage(models.Model):
