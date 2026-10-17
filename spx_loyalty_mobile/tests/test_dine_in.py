@@ -132,3 +132,20 @@ class TestDineInNative(TestPoSCommon):
             self.assertIn(received['order']['name'], [o['name'] for o in self.api.dine_orders()])
         with self.customer(self.bob):
             self.assertEqual(self.api.dine_orders(), [])
+
+    def test_guided_gift_and_birthday_templates_pass_native_pos_startup(self):
+        action = self.website.action_mobile_setup_wizard()
+        wizard = self.env['spx.mobile.setup.wizard'].browse(action['res_id'])
+        wizard.write({'origin': 'https://dine-in.example.invalid',
+                      'gift_mode': 'template', 'birthday_mode': 'template',
+                      'birthday_enabled': True, 'signup_enabled': False})
+        for unused in range(3):
+            wizard.action_next()
+        wizard.confirmed = True
+        wizard.action_apply()
+        self.config._check_before_creating_new_session()
+        birthday = self.website.spx_birthday_program_id
+        self.assertFalse(birthday.rule_ids.any_product)
+        self.assertFalse(birthday.rule_ids.valid_product_ids)
+        self.assertFalse(birthday._get_valid_products(self.product)[birthday.rule_ids])
+        self.assertFalse(birthday.coupon_ids)

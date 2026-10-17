@@ -58,8 +58,13 @@ class TestGuidedSetup(TransactionCase):
         self.assertTrue(all(p.is_published and p.website_id == self.website for p in products))
         self.assertEqual(gift.trigger_product_ids.product_tmpl_id, products)
         birthday = self.website.spx_birthday_program_id
-        self.assertFalse(birthday.rule_ids)
+        self.assertEqual(len(birthday.rule_ids), 1)
+        self.assertFalse(birthday.rule_ids.any_product)
+        self.assertFalse(birthday.rule_ids.valid_product_ids)
         self.assertFalse(birthday.trigger_product_ids)
+        for program in gift | birthday:
+            self.assertTrue(program.mail_template_id)
+            self.assertEqual(program.pos_report_print_id, self.env.ref('loyalty.report_gift_card'))
         self.assertNotEqual(birthday, gift)
         for program in loyalty | gift | birthday:
             self.assertEqual(program.website_id, self.website)

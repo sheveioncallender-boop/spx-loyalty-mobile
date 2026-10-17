@@ -1,4 +1,10 @@
-# Jenny’s connector 19.0.4.4.2 and Android 0.8.0+15
+# Jenny’s connector 19.0.4.4.3 and Android 0.8.0+15
+
+## Native POS starter compatibility (19.0.4.4.3)
+
+New gift-card and birthday templates include Odoo’s standard gift-card email template and print report. Native POS requires these when opening a register. Birthday templates include the native currency-based rule with a product domain that matches no products: birthday credit can be issued by the birthday flow without being earned from normal purchases. Birthday issuance suppresses the generic gift-card email and keeps its existing birthday message.
+
+Existing programs are not silently rewritten. If an older manually configured program blocks POS opening, select its native Gift Card print report and verify its rule, email template and product scope before continuing. No loyalty cards or balances are changed by this update.
 
 This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1+14. It is not cleared for the live customer database until the lifecycle and business-flow tests below pass on a disposable Odoo 19 instance.
 

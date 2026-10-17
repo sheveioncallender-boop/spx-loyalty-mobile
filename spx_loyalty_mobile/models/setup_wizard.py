@@ -335,10 +335,23 @@ class AppSetupWizard(models.TransientModel):
                 'reward_point_split': True, 'minimum_qty': 0,
                 'product_ids': [Command.set(products.ids)],
             }))
-            template = self.env.ref('loyalty.mail_template_gift_card', raise_if_not_found=False)
-            if template:
-                values['communication_plan_ids'].append(Command.create({
-                    'trigger': 'create', 'mail_template_id': template.id}))
+        elif kind == 'birthday':
+            # Native POS requires one currency-based rule even for manually
+            # issued credit. Match no products so purchases never issue it.
+            values['rule_ids'].append(Command.create({
+                'reward_point_mode': 'money', 'reward_point_amount': 1,
+                'reward_point_split': True, 'minimum_qty': 0,
+                'product_domain': "[('id', '=', 0)]",
+            }))
+        if kind in ('gift', 'birthday'):
+            # Native POS validates both fields when opening its register.
+            # Birthday issuance already uses loyalty_no_mail to avoid a
+            # second gift-card notification alongside its birthday message.
+            values['communication_plan_ids'].append(Command.create({
+                'trigger': 'create',
+                'mail_template_id': self.env.ref('loyalty.mail_template_gift_card').id,
+                'pos_report_print_id': self.env.ref('loyalty.report_gift_card').id,
+            }))
         program = self.env['loyalty.program'].with_company(self.company_id).create(values)
         self.env['ir.config_parameter'].sudo().set_param(self._template_key(kind), str(program.id))
         return program
