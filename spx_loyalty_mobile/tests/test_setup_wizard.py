@@ -92,8 +92,12 @@ class TestGuidedSetup(TransactionCase):
         program = self.env['loyalty.program'].create({
             'name': 'Admin custom program', 'program_type': 'loyalty',
             'company_id': self.website.company_id.id, 'website_id': self.website.id,
+            'currency_id': self.website.currency_id.id,
+            'rule_ids': [Command.create({'reward_point_mode': 'money', 'reward_point_amount': 2})],
+            'reward_ids': [Command.create({'reward_type': 'discount', 'discount_mode': 'percent',
+                                          'discount': 13, 'required_points': 75})],
         })
-        program.reward_ids.discount = 13
+        self.assertEqual(program.reward_ids.discount, 13)
         self.website.spx_mobile_program_ids = [Command.set(program.ids)]
         wizard = self.wizard()
         self.assertEqual(wizard.loyalty_mode, 'existing')

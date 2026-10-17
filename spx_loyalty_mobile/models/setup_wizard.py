@@ -26,7 +26,10 @@ def gift_amounts(value):
         raise UserError(_('Enter between 1 and 10 positive gift amounts, each no greater than 1,000,000.'))
     if len(set(amounts)) != len(amounts):
         raise UserError(_('Each gift amount should appear only once.'))
-    return [float(amount) for amount in amounts]
+    converted = [float(amount) for amount in amounts]
+    if any(amount <= 0 for amount in converted):
+        raise UserError(_('Gift amounts must be greater than zero in the website currency.'))
+    return converted
 
 
 class AppSetupWizard(models.TransientModel):

@@ -12,7 +12,7 @@ class TestWizardValidation(TestCase):
         self.assertEqual(gift_amounts(' 100, 50.50, 200 '), [100, 50.5, 200])
 
     def test_amounts_reject_nonfinite_duplicates_and_unbounded_inputs(self):
-        for value in ('', '0', '-1', 'NaN', 'Infinity', '1e999999', '50,50.0',
+        for value in ('', '0', '-1', 'NaN', 'Infinity', '1e999999', '1e-9999', '50,50.0',
                       '50,', '1000001', 'a,50', ','.join(str(i) for i in range(1, 12))):
             with self.subTest(value=value), self.assertRaises(UserError):
                 gift_amounts(value)

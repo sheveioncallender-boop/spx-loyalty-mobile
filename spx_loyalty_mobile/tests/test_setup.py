@@ -17,6 +17,7 @@ class TestAppSetup(TransactionCase):
         return self.env['loyalty.program'].create({
             'name': name, 'program_type': 'loyalty',
             'company_id': self.website.company_id.id,
+            'currency_id': self.website.currency_id.id,
             'website_id': self.website.id, **values,
         })
 
