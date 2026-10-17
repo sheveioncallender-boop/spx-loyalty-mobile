@@ -132,6 +132,13 @@ class Website(models.Model):
                 ('company_id', '=', self.company_id.id)], limit=2)
             pos = candidates if len(candidates) == 1 else pos
         programs = self.spx_mobile_program_ids
+        # Offer the birthday starter only on first setup. Reopening the guide,
+        # upgrading, or reinstalling must preserve an administrator's opt-out.
+        first_setup = not any((
+            self.spx_mobile_account_origin, self.spx_mobile_enabled, programs,
+            self.spx_mobile_signup_enabled, self.spx_gift_program_ids,
+            self.spx_birthday_program_id, self.spx_birthday_amount,
+        ))
         wizard = self.env['spx.mobile.setup.wizard'].create({
             'website_id': self.id, 'source_revision': self.write_date.isoformat(),
             'origin': self.spx_mobile_account_origin or self._mobile_origin_candidate(),
@@ -142,7 +149,8 @@ class Website(models.Model):
             'gift_program_ids': [Command.set(self.spx_gift_program_ids.ids)],
             'gift_product_ids': [Command.set(self.spx_gift_product_ids.ids)],
             'birthday_program_id': self.spx_birthday_program_id.id,
-            'birthday_enabled': self.spx_birthday_enabled,
+            'birthday_mode': 'template' if first_setup else 'keep',
+            'birthday_enabled': True if first_setup else self.spx_birthday_enabled,
             'birthday_amount': self.spx_birthday_amount or 50,
             'birthday_days': self.spx_birthday_days or 21,
             'signup_enabled': self.spx_mobile_signup_enabled,

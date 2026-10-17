@@ -1,4 +1,4 @@
-# Jenny’s connector 19.0.4.4.1 and Android 0.8.0+15
+# Jenny’s connector 19.0.4.4.2 and Android 0.8.0+15
 
 This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1+14. It is not cleared for the live customer database until the lifecycle and business-flow tests below pass on a disposable Odoo 19 instance.
 
@@ -21,6 +21,12 @@ This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1
 
 Fresh instances: install **Jenny’s Rewards**; its data dependency installs automatically. Open **Jenny’s Rewards → App setup**. No demo contacts, products, balances or old-instance data are installed.
 
+## Birthday starter selected on first setup (19.0.4.4.2)
+
+The first setup guide preselects birthday credit: 50 in the website currency, valid for 21 days, for verified app members. Administrators can change the amount or select Keep current / set up later before Apply. Opening the guide or installing/upgrading the module does not issue credit or activate a program. Apply creates the dedicated native birthday program and enables its hourly birthday check. Reopening setup, upgrading or reinstalling preserves existing birthday choices, including disabled rewards.
+
+Birthday processing reads the existing customer contact: the configured stored Date field takes priority, with the signup Birthday field as fallback. Dates and contacts are not copied or replaced. Credits use native Odoo cards, balances and redemption, with one birthday award per customer/company/year. Purchased gift cards stay separate.
+
 ## Setup display correction (19.0.4.4.1)
 
 The deployed guide revealed missing labels beside its policy and final-review checkboxes. Both now have explicit labels. Native program and outgoing-email actions also clear the website picker's `create=False` context so administrators can see the normal creation controls. Odoo access rights remain in force. Upgrade Jenny’s Rewards after pulling this correction; no customer data or reward rules change.
@@ -30,7 +36,7 @@ The deployed guide revealed missing labels beside its policy and final-review ch
 Open **Jenny’s Rewards → App setup**. One website opens the guide directly; for multiple websites, choose the website and click **Guided setup**. The administrator follows four short screens with Back and Continue:
 
 1. **Connect:** confirm the detected HTTPS address, app name, currency and app enablement. Existing choices are loaded; an ambiguous address or restaurant POS is not guessed.
-2. **Benefits:** choose a loyalty template or an existing/custom native program. The loyalty starters offer points for a percentage discount or a fixed discount, with editable earning rate, threshold and value. Optional gift cards start at 50, 100 and 200 in the website currency; optional birthday credit starts at 50 with 21-day validity. These are starting values for the administrator to review, not approved customer rules. Gift/birthday options default to keeping current settings. Native **Create and Edit** remains available for custom programs and saves those native records immediately.
+2. **Benefits:** choose a loyalty template or an existing/custom native program. The loyalty starters offer points for a percentage discount or a fixed discount, with editable earning rate, threshold and value. Optional gift cards start at 50, 100 and 200 in the website currency. Birthday credit starts at 50 with 21-day validity and is preselected on first setup; existing installations keep their saved choices. These are starting values for the administrator to review, not approved customer rules. Gift-card options default to keeping current settings. Native **Create and Edit** remains available for custom programs and saves those native records immediately.
 3. **Customers:** optionally enable signup with approved terms/privacy, sender and policy version. Select a restaurant POS for ordering. Signup may stay off until mail and policies are ready.
 4. **Review:** see exactly what will be created, published, connected or left unchanged; acknowledge the choices and click **Apply setup**. Template programs/products are created only here. Applying setup creates no customer accounts, loyalty cards, balances, emails or orders. Newly enabled birthday scheduling can issue credits on its next normal scheduled run; the review shows its audience and amount.
 

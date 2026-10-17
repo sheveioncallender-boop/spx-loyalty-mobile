@@ -69,6 +69,33 @@ class TestGuidedSetup(TransactionCase):
         wizard.action_apply()
         self.assertEqual(self.counts(), after)
 
+    def test_first_setup_preselects_birthday_but_only_apply_enables_it(self):
+        before = self.counts()
+        wizard = self.wizard()
+        self.assertEqual(wizard.birthday_mode, 'template')
+        self.assertTrue(wizard.birthday_enabled)
+        self.assertEqual((wizard.birthday_amount, wizard.birthday_days), (50, 21))
+        self.assertFalse(self.website.spx_birthday_enabled)
+        self.assertEqual(self.counts(), before)
+        self.apply(wizard)
+        self.assertTrue(self.website.spx_birthday_enabled)
+        self.assertEqual(self.website.spx_birthday_program_id.program_type, 'gift_card')
+        self.assertFalse(self.website.spx_birthday_program_id.trigger_product_ids)
+        self.assertEqual(self.counts()[2:], before[2:], 'Setup must not issue cards or messages')
+
+    def test_reopening_and_reinstall_preserve_birthday_opt_out(self):
+        self.apply(self.wizard(birthday_mode='keep', birthday_enabled=False))
+        before = self.counts()
+        for unused in range(2):
+            wizard = self.wizard()
+            self.assertEqual(wizard.birthday_mode, 'keep')
+            self.assertFalse(wizard.birthday_enabled)
+            self.apply(wizard)
+            self.assertFalse(self.website.spx_birthday_enabled)
+            self.assertFalse(self.website.spx_birthday_program_id)
+            self.assertEqual(self.counts(), before)
+            disconnect_app(self.env)
+
     def test_reopen_and_reinstall_reuse_template_and_keep_edited_rules(self):
         first = self.wizard(gift_mode='template', birthday_mode='template')
         self.apply(first)
@@ -109,7 +136,9 @@ class TestGuidedSetup(TransactionCase):
     def test_another_website_gets_its_own_templates(self):
         self.apply(self.wizard())
         other = self.website.copy({'name': 'Second site', 'domain': 'https://second.example.invalid',
-                                  'spx_mobile_program_ids': [Command.clear()]})
+                                  'spx_mobile_program_ids': [Command.clear()],
+                                  'spx_birthday_program_id': False, 'spx_birthday_enabled': False,
+                                  'spx_birthday_amount': 0})
         self.apply(self.wizard(other, loyalty_mode='template'))
         self.assertNotEqual(other.spx_mobile_program_ids, self.website.spx_mobile_program_ids)
         self.assertEqual(other.spx_mobile_program_ids.website_id, other)
