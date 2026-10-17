@@ -54,5 +54,14 @@ Automated Odoo cases in `spx_loyalty_mobile/tests/test_lifecycle.py` cover the r
 
 - Five structural regression checks passed: exact preservation of original field declarations and business methods, passive retained schema, ownership manifest, and XML/ACL references. Python syntax, XML parsing and manifest paths passed.
 - Flutter 3.47.4 analysis passed. The complete Flutter suite had 56 passing tests and two failures. The same two failures were reproduced on the unchanged recovered 0.7.1 source: outdated visual snapshots and an old sign-in button label in `test/app_test.dart`. No goldens were regenerated to hide these differences. The four new deployment-isolation tests passed.
-- The Android build was attempted using the recovered test signing identity, but an environment proxy denied a required Flutter engine artifact download. No new APK has been delivered from this run. The new instance URL/database have not yet been supplied, so no connected deployment has been built.
+- The initial Android build attempt was blocked by a required Flutter engine download. That environment issue was resolved; the connected build and delivery are recorded below.
 - The Odoo test database is not available in this workspace. Actual install/upgrade/uninstall/reinstall, native website/POS/payment behaviour and physical-device tests are pending. The GitHub change remains a draft test branch.
+
+## Connected Android build — October 17, 2026
+
+- Built and delivered `Jennys-Android-0.8.0-arm64.apk` (**0.8.0+15**, ARM64, 20,411,600 bytes) using the publisher's supplied connection file for the new Cloudpepper test instance. Connection files and signing keys remain outside Git.
+- The read-only connector check passed: API version 1, customer app enabled, and database name matched. The new HTTPS origin and database were also verified inside the compiled APK.
+- APK signature and 16 KiB ZIP alignment checks passed. Application ID remains `net.spxcorp.jennys_rewards`; the signing certificate matches the previous test APK, allowing an in-place update.
+- APK SHA-256: `f07e95d8c637b2e91fd2e1fe3757f9cbb7d106c5bc3ab91d73c8464e723b64e9`.
+- The new instance's signup configuration endpoint still reports registration disabled. Complete the signup configuration before testing new account creation. This is separate from the enabled app connection.
+- Physical-device flows and actual Odoo upgrade/uninstall/reinstall acceptance checks remain pending. This is a test APK; no production deployment or customer mutations were performed.
