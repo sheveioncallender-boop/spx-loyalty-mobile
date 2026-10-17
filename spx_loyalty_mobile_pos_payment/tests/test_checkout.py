@@ -15,6 +15,9 @@ class TestMobilePOSCheckout(TestDineInNative):
     def setUpClass(cls):
         super().setUpClass()
         cls.api = MobilePOSCheckout()
+        # The shared fixture opens POS for ordering tests. Close its empty
+        # session through Odoo before configuring the online payment method.
+        cls.config.current_session_id.action_pos_session_closing_control()
         cls.provider = cls.env['payment.provider'].create({
             'name': 'Disposable checkout provider', 'code': 'none', 'state': 'test',
             'is_published': True, 'company_id': cls.config.company_id.id,
@@ -26,6 +29,9 @@ class TestMobilePOSCheckout(TestDineInNative):
             'online_payment_provider_ids': [Command.set(cls.provider.ids)],
         })
         cls.config.payment_method_ids += cls.online_method
+        cls.config.open_ui()
+        if cls.config.current_session_id.state == 'opening_control':
+            cls.config.current_session_id.set_opening_control(0, 'Disposable checkout tests')
 
     @contextmanager
     def as_customer(self, user=None):
