@@ -42,12 +42,15 @@ class TestDineInNative(TestPoSCommon):
     @contextmanager
     def customer(self, user=None):
         req = SimpleNamespace(env=self.env(user=(user or self.alice).id), website=self.website)
-        with patch('odoo.addons.spx_loyalty_mobile.controllers.api.request', req), \
+        with patch('odoo.http.request', req), \
+             patch('odoo.addons.spx_loyalty_mobile.controllers.api.request', req), \
              patch('odoo.addons.spx_loyalty_mobile.controllers.dine_in.request', req):
             yield
 
     def test_quote_and_submit_native_unpaid_order_and_replay(self):
         before = self.env['pos.order'].search_count([])
+        cards_before = self.env['loyalty.card'].search_count([])
+        history_before = self.env['loyalty.history'].search_count([])
         with self.customer():
             cart = self.api.dine_add(self.product.id, 2)
             self.assertEqual(self.env['pos.order'].search_count([]), before)
@@ -64,6 +67,8 @@ class TestDineInNative(TestPoSCommon):
         self.assertFalse(order.table_id)
         self.assertFalse(order.payment_ids)
         self.assertFalse(order.picking_ids)
+        self.assertEqual(self.env['loyalty.card'].search_count([]), cards_before)
+        self.assertEqual(self.env['loyalty.history'].search_count([]), history_before)
         self.assertEqual(order.lines.product_id, self.product)
         self.assertEqual(order.amount_total, cart['total'])
         tags = json.loads(order.internal_note)
@@ -110,3 +115,20 @@ class TestDineInNative(TestPoSCommon):
         self.env['pos.order'].search([('pos_reference', '=', received['order']['name'])]).unlink()
         with self.customer():
             self.assertEqual(self.api.dine_submit(cart['basket_key'], cart['quote']), received)
+
+    def test_closed_session_rejects_submission_without_creating_order(self):
+        with self.customer():
+            cart = self.api.dine_add(self.product.id, 1)
+        self.config.current_session_id.state = 'closing_control'
+        before = self.env['pos.order'].search_count([])
+        with self.customer(), self.assertRaises(UserError):
+            self.api.dine_submit(cart['basket_key'], cart['quote'])
+        self.assertEqual(self.env['pos.order'].search_count([]), before)
+
+    def test_order_history_excludes_other_customer(self):
+        with self.customer():
+            cart = self.api.dine_add(self.product.id, 1)
+            received = self.api.dine_submit(cart['basket_key'], cart['quote'])
+            self.assertIn(received['order']['name'], [o['name'] for o in self.api.dine_orders()])
+        with self.customer(self.bob):
+            self.assertEqual(self.api.dine_orders(), [])

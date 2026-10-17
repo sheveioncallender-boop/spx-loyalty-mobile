@@ -51,5 +51,5 @@ jobs:
             --addons-path="$RUNNER_TEMP/odoo/addons,$GITHUB_WORKSPACE" \
             --db_host=127.0.0.1 --db_user=odoo --db_password=odoo_ci_only \
             --database=jenny_setup_ci --init=spx_loyalty_mobile --without-demo=all \
-            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope' \
+            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope,/spx_loyalty_mobile:TestDineInNative' \
             --stop-after-init --http-interface=127.0.0.1 --log-level=test
