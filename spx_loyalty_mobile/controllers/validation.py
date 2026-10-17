@@ -23,3 +23,19 @@ def mutation_id(value):
     if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9-]{16,64}', value):
         raise ValueError('A valid request identifier is required.')
     return value
+
+
+def public_card_details(brand, number):
+    """Only a known card brand and last four digits may reach a customer."""
+    brands = {
+        'visa': 'Visa', 'mastercard': 'Mastercard', 'mc': 'Mastercard',
+        'amex': 'American Express', 'americanexpress': 'American Express',
+        'discover': 'Discover', 'diners': 'Diners Club', 'dinersclub': 'Diners Club',
+        'jcb': 'JCB', 'unionpay': 'UnionPay', 'maestro': 'Maestro',
+    }
+    brand = brands.get(re.sub(r'[^a-z]', '', str(brand or '').lower()), '')
+    number = str(number or '').strip()
+    digits = re.sub(r'[^0-9]', '', number)
+    last4 = digits[-4:] if (len(digits) >= 4 and
+                           re.fullmatch(r'[0-9xX*•\s-]+', number)) else ''
+    return {'brand': brand, 'last4': last4} if brand or last4 else None

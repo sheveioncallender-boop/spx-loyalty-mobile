@@ -1,5 +1,27 @@
 # Native POS checkout from the app
 
+## Android 0.9.2 / Jenny's Rewards 19.0.4.5.2
+
+Paid order cards show native POS payment methods, amounts, dates, and separate
+change/refund lines. Card receipts include the brand and last four digits when
+recorded by Odoo. Scotia details follow the exact POS payment → accounting
+payment → verified transaction relation, so existing paid orders also work.
+The customer API exposes a fixed receipt allowlist, never raw terminal receipts,
+full card numbers, cardholder names, bank approval data or payment tokens.
+Pending orders do not display editable POS payment lines as completed payments.
+Order ownership, company and POS scope remain enforced by the existing endpoint.
+
+The in-person POS acceptance test exposed a second native payment path: POS UI
+sync writes payment lines directly, bypassing `add_payment`. Refresh app-linked
+receipt/display metadata after native `_process_saved_order` as well, once Odoo
+has calculated the paid amount and completed its ordinary workflow. Regression
+tests cover partial and full cash payment through `sync_from_ui`, a repeated
+submission, and exclusion of unrelated orders. No payment, accounting or loyalty
+logic is replaced. The upgrade repairs the same display on existing app bills.
+
+Upgrade **Jenny's Rewards** to **19.0.4.5.2** after deployment and install Android
+**0.9.2+18** over the previous test build. No Scotia update is required.
+
 ## Android 0.9.1 / Jenny's Rewards 19.0.4.5.1
 
 The home screen now has a visible **Your orders & bill** card. It opens the

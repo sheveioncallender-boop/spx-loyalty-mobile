@@ -15,6 +15,10 @@ class OrderStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final offer = order['payment_offer'];
+    final paid = ['paid', 'done', 'invoiced'].contains(order['state']);
+    final payments = paid && order['payments'] is List
+        ? (order['payments'] as List).whereType<Map>().toList()
+        : <Map>[];
     final canPay =
         order['state'] == 'draft' &&
         offer is Map &&
@@ -121,6 +125,22 @@ class OrderStatusCard extends StatelessWidget {
               detail,
               style: const TextStyle(fontSize: 12, height: 1.6, color: muted),
             ),
+            if (payments.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14),
+                child: Divider(height: 1),
+              ),
+              const Text(
+                'Payment details',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                ),
+              ),
+              for (final payment in payments)
+                _OrderPaymentLine(payment: payment),
+            ],
             if (canPay) ...[
               const SizedBox(height: 16),
               SizedBox(
@@ -143,6 +163,85 @@ class OrderStatusCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OrderPaymentLine extends StatelessWidget {
+  final Map payment;
+  const _OrderPaymentLine({required this.payment});
+
+  @override
+  Widget build(BuildContext context) {
+    final card = payment['card'];
+    final brand = card is Map ? '${card['brand'] ?? ''}' : '';
+    final last4 = card is Map ? '${card['last4'] ?? ''}' : '';
+    final cardLabel = [
+      if (brand.isNotEmpty) brand,
+      if (RegExp(r'^[0-9]{4}$').hasMatch(last4)) 'ending $last4',
+    ].join(' ');
+    final method = '${payment['method'] ?? 'Payment'}';
+    final label = switch (payment['kind']) {
+      'change' => 'Change · $method',
+      'refund' => 'Refund · $method',
+      _ => method,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            cardLabel.isEmpty
+                ? Icons.payments_outlined
+                : Icons.credit_card_rounded,
+            size: 19,
+            color: muted,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                  ),
+                ),
+                if (cardLabel.isNotEmpty)
+                  Text(
+                    cardLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.5,
+                      color: muted,
+                    ),
+                  ),
+                Text(
+                  dateLabel(payment['date']),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.5,
+                    color: muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            money(payment['amount'], '${payment['currency']}'),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+          ),
+        ],
       ),
     );
   }

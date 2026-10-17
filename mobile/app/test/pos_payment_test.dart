@@ -17,6 +17,108 @@ void main() {
     'payment_offer': {'amount': 15, 'currency': 'TTD'},
   };
   testWidgets(
+    'Paid receipt shows native methods, masked card and change on a small phone',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final paidOrder = {
+        ...order,
+        'state': 'paid',
+        'total': 15,
+        'payments': [
+          {
+            'method': 'Cash',
+            'amount': 10,
+            'currency': 'TTD',
+            'date': order['date'],
+            'kind': 'payment',
+            'card': null,
+          },
+          {
+            'method': 'Scotiabank Online',
+            'amount': 10,
+            'currency': 'TTD',
+            'date': order['date'],
+            'kind': 'payment',
+            'card': {'brand': 'Visa', 'last4': '0083'},
+          },
+          {
+            'method': 'Cash',
+            'amount': -5,
+            'currency': 'TTD',
+            'date': order['date'],
+            'kind': 'change',
+            'card': null,
+          },
+        ],
+      };
+      Future<void> show(Map<String, dynamic> data) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: OrderStatusCard(order: data, onPay: () {}),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await show(paidOrder);
+      expect(find.text('Paid'), findsOneWidget);
+      expect(find.text('Payment details'), findsOneWidget);
+      expect(find.text('Cash'), findsOneWidget);
+      expect(find.text('Scotiabank Online'), findsOneWidget);
+      expect(find.text('Visa ending 0083'), findsOneWidget);
+      expect(find.text('Change · Cash'), findsOneWidget);
+      expect(find.text('TT\$10.00'), findsNWidgets(2));
+      expect(find.text('TT\$-5.00'), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+      expect(tester.takeException(), isNull);
+      await show({...paidOrder, 'state': 'draft'});
+      expect(find.text('Payment details'), findsNothing);
+      expect(find.text('Visa ending 0083'), findsNothing);
+      await show({...paidOrder, 'payments': null});
+      expect(find.text('Paid'), findsOneWidget);
+      expect(find.text('Payment details'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Card method without details stays readable and never displays a full card number',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: OrderStatusCard(
+              order: {
+                ...order,
+                'state': 'paid',
+                'payments': [
+                  {
+                    'method': 'Card terminal',
+                    'amount': 15,
+                    'currency': 'TTD',
+                    'date': order['date'],
+                    'kind': 'payment',
+                    'card': {'brand': '', 'last4': '4111111111111111'},
+                  },
+                ],
+              },
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Card terminal'), findsOneWidget);
+      expect(find.textContaining('4111111111111111'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Only a prepared open bill offers payment; POS remains an option',
     (tester) async {
       var taps = 0;

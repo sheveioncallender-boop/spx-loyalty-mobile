@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from unittest.mock import patch
 from urllib.parse import urlsplit, parse_qs
+from types import SimpleNamespace
 
 from odoo import Command
 from odoo.exceptions import AccessError, UserError
@@ -113,3 +114,28 @@ class TestMobilePOSCheckout(TestDineInNative):
         for value in [True, 0, -1, '1', None]:
             with self.as_customer(), self.assertRaises(AccessError):
                 self.api.dine_payment(value)
+
+    def test_scotia_receipt_reads_only_verified_exact_payment_relation(self):
+        order = self.make_order()
+        tx = SimpleNamespace(
+            pos_order_id=order, company_id=order.company_id,
+            provider_code='spx_paybridge_scotia', state='done',
+            _fields={'scotia_response_hash_validated': True},
+            scotia_response_hash_validated=True, scotia_card_brand='VISA',
+            scotia_card_mask='0083',
+        )
+        payment = SimpleNamespace(
+            card_brand=False, card_no=False, pos_order_id=order,
+            company_id=order.company_id,
+            online_account_payment_id=SimpleNamespace(payment_transaction_id=tx),
+        )
+        self.assertEqual(self.api._payment_card_details(payment),
+                         {'brand': 'Visa', 'last4': '0083'})
+        tx.scotia_response_hash_validated = False
+        self.assertIsNone(self.api._payment_card_details(payment))
+        tx.scotia_response_hash_validated = True
+        tx.pos_order_id = self.env['pos.order']
+        self.assertIsNone(self.api._payment_card_details(payment))
+        tx.pos_order_id = order
+        tx._fields = {}  # A regular Odoo installation without the Scotia addon.
+        self.assertIsNone(self.api._payment_card_details(payment))

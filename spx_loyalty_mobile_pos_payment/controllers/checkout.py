@@ -4,10 +4,27 @@ from odoo.exceptions import AccessError, UserError
 from odoo.http import request
 from odoo.addons.pos_online_payment.controllers.payment_portal import PaymentPortal
 from odoo.addons.spx_loyalty_mobile.controllers.dine_in import DineInAPI
-from odoo.addons.spx_loyalty_mobile.controllers.validation import positive_id
+from odoo.addons.spx_loyalty_mobile.controllers.validation import positive_id, public_card_details
 
 
 class MobilePOSCheckout(DineInAPI):
+    def _payment_card_details(self, payment):
+        details = super()._payment_card_details(payment)
+        # Follow the exact native payment relation; never search by customer,
+        # amount or a receipt string. Scotia remains an optional installation.
+        tx = payment.online_account_payment_id.payment_transaction_id
+        if (tx and tx.pos_order_id == payment.pos_order_id
+                and tx.company_id == payment.company_id
+                and tx.provider_code == 'spx_paybridge_scotia'
+                and tx.state in ('authorized', 'done')
+                and 'scotia_response_hash_validated' in tx._fields
+                and tx.scotia_response_hash_validated):
+            bank = public_card_details(tx.scotia_card_brand, tx.scotia_card_mask)
+            if bank:
+                details = {key: bank.get(key) or (details or {}).get(key, '')
+                           for key in ('brand', 'last4')}
+        return details
+
     def _payment_offer(self, order):
         # A positive next amount is prepared by the cashier's native Validate
         # flow. A received app order alone must not start payment or skip staff.

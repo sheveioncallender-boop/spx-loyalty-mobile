@@ -1,6 +1,6 @@
 # Jenny’s Odoo connector and native app
 
-Odoo **19.0.4.2.0** · Flutter app source **0.8.0+15**
+Connector **19.0.4.5.2** · Retained data **19.0.4.2.0** · Flutter **0.9.2+18**
 
 Read [installation, retention options and validation status](INSTALL_AND_RETENTION.md) before deployment. Both addon directories are required. **Upgrade an existing installation before testing uninstall**; earlier connector versions do not retain their app data.
 

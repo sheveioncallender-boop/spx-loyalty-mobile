@@ -1,14 +1,17 @@
 """Native ORM integration checks. Run on a disposable Odoo 19 database."""
 from contextlib import contextmanager
+from copy import deepcopy
 import json
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 from odoo.addons.point_of_sale.tests.common import TestPoSCommon
 from odoo.addons.spx_loyalty_mobile.controllers.dine_in import DineInAPI
+from odoo.addons.spx_loyalty_mobile.controllers.validation import public_card_details
 
 
 @tagged('post_install', '-at_install')
@@ -121,6 +124,95 @@ class TestDineInNative(TestPoSCommon):
         self.assertFalse(unrelated.ticket_code)
         self.assertEqual(unrelated.amount_difference, -321)
         self.assertEqual(before, {model: self.env[model].search_count([]) for model in models})
+
+    def test_pos_ui_payment_sync_refreshes_difference_and_replay_is_safe(self):
+        order = self._submitted_order()
+        code = order.ticket_code
+        method = self.config.payment_method_ids.filtered('is_cash_count')[:1]
+        self.assertTrue(method)
+        history_before = self.env['loyalty.history'].search_count([])
+        for amount, state, expected in [(40, 'draft', -60), (60, 'paid', 0)]:
+            payload = {
+                'uuid': order.uuid, 'session_id': order.session_id.id,
+                'state': state, 'lines': [], 'amount_return': 0,
+                # Reproduce a stale value received from an app-created draft.
+                'amount_difference': -100,
+                'payment_ids': [Command.create({
+                    'uuid': str(uuid4()), 'amount': amount,
+                    'payment_method_id': method.id,
+                })],
+            }
+            self.env['pos.order'].sync_from_ui([deepcopy(payload)])
+            self.assertEqual(order.amount_difference, expected)
+            self.assertEqual(order.state, state)
+        self.assertEqual(order.amount_paid, 100)
+        self.assertEqual(order.amount_total, 100)
+        self.assertEqual(len(order.payment_ids), 2)
+        payment_ids = order.payment_ids.ids
+        self.env['pos.order'].sync_from_ui([deepcopy(payload)])
+        self.assertEqual(order.payment_ids.ids, payment_ids)
+        self.assertEqual(order.amount_difference, 0)
+        self.assertEqual(order.ticket_code, code)
+        self.assertEqual(self.env['loyalty.history'].search_count([]), history_before)
+
+    def test_pos_ui_sync_does_not_repair_unrelated_orders(self):
+        order = self._submitted_order().copy({
+            'state': 'draft', 'amount_paid': 0, 'payment_ids': [],
+            'ticket_code': False, 'amount_difference': -321,
+        })
+        self.env['pos.order'].sync_from_ui([{
+            'uuid': order.uuid, 'session_id': order.session_id.id,
+            'state': 'draft', 'lines': [], 'payment_ids': [], 'amount_return': 0,
+        }])
+        self.assertEqual(order.amount_difference, -321)
+        self.assertFalse(order.ticket_code)
+
+    def test_customer_receipt_uses_native_methods_and_masks_card_details(self):
+        order = self._submitted_order()
+        method = self.config.payment_method_ids[:1]
+        order.add_payment({'pos_order_id': order.id, 'amount': 40,
+                           'payment_method_id': method.id})
+        with self.as_customer():
+            self.assertEqual(self.api.dine_orders()[0]['payments'], [])
+        order.add_payment({'pos_order_id': order.id, 'amount': 60,
+                           'payment_method_id': method.id, 'card_brand': 'VISA',
+                           'card_no': '4111 1111 1111 0083',
+                           'cardholder_name': 'Private cardholder',
+                           'payment_method_authcode': 'private-approval',
+                           'ticket': 'private-terminal-receipt'})
+        order._process_saved_order(False)
+        models = ['pos.payment', 'payment.transaction', 'account.payment', 'account.move', 'loyalty.history']
+        before = {model: self.env[model].search_count([]) for model in models}
+        with self.as_customer():
+            receipt = self.api.dine_orders()[0]
+        payments = receipt['payments']
+        self.assertEqual([p['amount'] for p in payments], [40, 60])
+        self.assertEqual(payments[0]['method'], method.name)
+        self.assertIsNone(payments[0]['card'])
+        self.assertEqual(payments[1]['card'], {'brand': 'Visa', 'last4': '0083'})
+        self.assertEqual(set(payments[1]), {'method', 'amount', 'currency', 'date', 'kind', 'card'})
+        for secret in ['4111', 'Private cardholder', 'private-approval', 'private-terminal-receipt']:
+            self.assertNotIn(secret, json.dumps(receipt))
+        with self.as_customer(self.bob):
+            self.assertEqual(self.api.dine_orders(), [])
+        self.assertEqual(before, {model: self.env[model].search_count([]) for model in models})
+
+    def test_card_details_allowlist_and_change_label(self):
+        self.assertEqual(public_card_details('MASTERCARD', '**** **** **** 2745'),
+                         {'brand': 'Mastercard', 'last4': '2745'})
+        self.assertIsNone(public_card_details('4111111111111111', 'unknown'))
+        self.assertIsNone(public_card_details(False, '123'))
+        order = self._submitted_order()
+        method = self.config.payment_method_ids[:1]
+        order.add_payment({'pos_order_id': order.id, 'amount': 120,
+                           'payment_method_id': method.id})
+        order.add_payment({'pos_order_id': order.id, 'amount': -20,
+                           'payment_method_id': method.id, 'is_change': True})
+        order._process_saved_order(False)
+        with self.as_customer():
+            payments = self.api.dine_orders()[0]['payments']
+        self.assertEqual([p['kind'] for p in payments], ['payment', 'change'])
+        self.assertEqual(sum(p['amount'] for p in payments), order.amount_total)
 
     def test_price_edit_requires_new_review_and_unpublish_blocks_submission(self):
         with self.as_customer():

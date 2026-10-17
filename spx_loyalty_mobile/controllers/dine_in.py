@@ -15,7 +15,7 @@ from odoo.http import request
 from odoo.tools import html2plaintext
 
 from .api import MobileAPI
-from .validation import mutation_id, positive_id, quantity
+from .validation import mutation_id, positive_id, public_card_details, quantity
 
 
 class DineInAPI(MobileAPI):
@@ -337,4 +337,21 @@ class DineInAPI(MobileAPI):
         """Extension hook for optional native checkout; no payment tokens in history."""
         return {'id': order.id, 'name': order.pos_reference or order.name,
                 'date': self._date(order.date_order), 'total': order.amount_total,
-                'currency': order.currency_id.name, 'state': order.state}
+                'currency': order.currency_id.name, 'state': order.state,
+                'payments': self._order_payments(order)}
+
+    def _payment_card_details(self, payment):
+        return public_card_details(payment.card_brand, payment.card_no)
+
+    def _order_payments(self, order):
+        # Only finalized native bills have a customer receipt. Draft POS lines
+        # can still be edited by staff and are not proof of completed payment.
+        if order.state not in ('paid', 'done', 'invoiced'):
+            return []
+        return [{
+            'method': payment.payment_method_id.name,
+            'amount': payment.amount, 'currency': payment.currency_id.name,
+            'date': self._date(payment.payment_date),
+            'kind': 'change' if payment.is_change else ('refund' if payment.amount < 0 else 'payment'),
+            'card': self._payment_card_details(payment),
+        } for payment in order.payment_ids.sorted('id')]

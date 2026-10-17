@@ -38,3 +38,11 @@ class PosOrder(models.Model):
         # value unchanged. App drafts initially have a negative difference.
         self._spx_repair_app_order_metadata()
         return result
+
+    def _process_saved_order(self, draft):
+        result = super()._process_saved_order(draft)
+        # POS UI sync writes payment_ids directly and therefore does not call
+        # add_payment for an ordinary exact cash/card payment. Wait until native
+        # processing has finalized amount_paid before refreshing display fields.
+        self._spx_repair_app_order_metadata()
+        return result
