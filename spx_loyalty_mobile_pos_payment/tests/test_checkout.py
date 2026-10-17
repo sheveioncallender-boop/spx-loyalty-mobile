@@ -43,7 +43,8 @@ class TestMobilePOSCheckout(TestDineInNative):
 
     def make_order(self):
         with self.as_customer():
-            cart = self.api.dine_add(self.product.id, 1)
+            current = self.api.dine_cart()
+            cart = self.api.dine_add(self.product.id, 1, current['basket_key'])
             receipt = self.api.dine_submit(cart['basket_key'], cart['quote'])['order']
         return self.env['pos.order'].search([('pos_reference', '=', receipt['name'])])
 
