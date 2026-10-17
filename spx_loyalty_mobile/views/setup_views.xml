@@ -6,16 +6,16 @@
         <field name="arch" type="xml">
             <form string="App setup" create="false" delete="false">
                 <header>
-                    <button name="action_mobile_detect_settings" type="object" string="Use detected settings" class="btn-primary"/>
+                    <button name="action_mobile_setup_wizard" type="object" string="Guided setup" class="btn-primary"/>
                     <button name="action_mobile_connection" type="object" string="Publisher connection file"/>
                     <button name="action_mobile_optional_features" type="object" string="Optional features"/>
                 </header>
                 <sheet>
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <img src="/spx_loyalty_mobile/static/description/icon.png" alt="Jenny’s Rewards" width="56" height="56" class="rounded-circle"/>
-                        <div><h1>Set up your customer app</h1><p class="text-muted mb-0">Complete the essentials, review the checklist, then test the app with your publisher.</p></div>
+                        <div><h1>Your app setup</h1><p class="text-muted mb-0">Your saved settings and the remaining checks before release.</p></div>
                     </div>
-                    <p>Use detected settings fills empty fields only when there is one compatible choice. It does not create programs, change earning rules or enable features.</p>
+                    <p>Use Guided setup to choose templates or your own programs in four short steps.</p>
                     <field name="spx_mobile_setup_status" nolabel="1" readonly="1"/>
                     <notebook>
                         <page string="1. Connection and loyalty">
@@ -31,7 +31,7 @@
                                     <field name="spx_mobile_program_ids" widget="many2many_tags"
                                            domain="[('program_type', '=', 'loyalty'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, id])]"
                                            options="{'no_create': True}"/>
-                                    <button name="action_mobile_programs" type="object" string="Manage loyalty programs" class="btn-link"/>
+                                    <div colspan="2"><button name="action_mobile_programs" type="object" string="Manage loyalty programs" class="btn-link"/></div>
                                     <field name="spx_mobile_pos_config_id" options="{'no_create': True}"/>
                                 </group>
                             </group>

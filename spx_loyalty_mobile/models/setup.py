@@ -112,8 +112,45 @@ class Website(models.Model):
                   'views': [(False, 'list'), (form.id, 'form')],
                   'domain': [('id', 'in', websites.ids)], 'context': {'create': False}}
         if len(websites) == 1:
-            action.update(res_id=websites.id, views=[(form.id, 'form')])
+            return websites.action_mobile_setup_wizard()
         return action
+
+    def _mobile_setup_status_action(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': _('App setup'), 'res_model': 'website',
+                'res_id': self.id, 'views': [(self.env.ref('spx_loyalty_mobile.website_app_setup_form').id, 'form')]}
+
+    def action_mobile_setup_wizard(self):
+        self.ensure_one()
+        self._mobile_setup_admin()
+        if self.company_id not in self.env.companies:
+            raise AccessError(_('Select this website’s company first.'))
+        pos = self.spx_mobile_pos_config_id
+        if not pos:
+            candidates = self.env['pos.config'].search([
+                ('active', '=', True), ('module_pos_restaurant', '=', True),
+                ('company_id', '=', self.company_id.id)], limit=2)
+            pos = candidates if len(candidates) == 1 else pos
+        programs = self.spx_mobile_program_ids
+        wizard = self.env['spx.mobile.setup.wizard'].create({
+            'website_id': self.id, 'source_revision': self.write_date.isoformat(),
+            'origin': self.spx_mobile_account_origin or self._mobile_origin_candidate(),
+            'brand': self.spx_mobile_brand or self.name,
+            'enable_app': self.spx_mobile_enabled or not (self.spx_mobile_account_origin or programs),
+            'pos_config_id': pos.id, 'loyalty_mode': 'existing' if programs else 'template',
+            'loyalty_program_ids': [Command.set(programs.ids)],
+            'gift_program_ids': [Command.set(self.spx_gift_program_ids.ids)],
+            'gift_product_ids': [Command.set(self.spx_gift_product_ids.ids)],
+            'birthday_program_id': self.spx_birthday_program_id.id,
+            'birthday_enabled': self.spx_birthday_enabled,
+            'birthday_amount': self.spx_birthday_amount or 50,
+            'birthday_days': self.spx_birthday_days or 21,
+            'signup_enabled': self.spx_mobile_signup_enabled,
+            'signup_program_id': self.spx_mobile_signup_program_id.id or (programs.id if len(programs) == 1 else False),
+            'mail_from': self.spx_mobile_mail_from, 'policy_version': self.spx_mobile_policy_version or '1',
+            'terms': self.spx_mobile_terms, 'privacy': self.spx_mobile_privacy,
+        })
+        return wizard._window()
 
     def action_mobile_detect_settings(self):
         self.ensure_one()

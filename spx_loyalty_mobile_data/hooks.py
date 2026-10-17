@@ -57,6 +57,12 @@ def adopt_existing_data(env):
 
 def detach_mail_references(env):
     """Keep sent native mail history readable after explicit app-data removal."""
+    # These keys only remember which native programs the setup guide created.
+    # Ordinary connector uninstall retains them; full data removal clears them.
+    # The native programs, products, cards and balances are never removed here.
+    env['ir.config_parameter'].sudo().search([
+        ('key', '=like', 'spx_mobile.setup_template.%'),
+    ]).filtered(lambda parameter: parameter.key.startswith('spx_mobile.setup_template.')).unlink()
     mail = env['mail.mail'].sudo().search([('model', '=like', 'spx.mobile.%')])
     mail |= env['spx.mobile.message'].sudo().search([]).mail_id
     mail.filtered(lambda m: m.state in ('outgoing', 'exception')).write({'state': 'cancel'})

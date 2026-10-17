@@ -1,4 +1,4 @@
-# Jenny’s connector 19.0.4.3.0 and Android 0.8.0+15
+# Jenny’s connector 19.0.4.4.0 and Android 0.8.0+15
 
 This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1+14. It is not cleared for the live customer database until the lifecycle and business-flow tests below pass on a disposable Odoo 19 instance.
 
@@ -21,7 +21,26 @@ This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1
 
 Fresh instances: install **Jenny’s Rewards**; its data dependency installs automatically. Open **Jenny’s Rewards → App setup**. No demo contacts, products, balances or old-instance data are installed.
 
-## Guided setup (19.0.4.3.0)
+## Four-step setup (19.0.4.4.0)
+
+Open **Jenny’s Rewards → App setup**. One website opens the guide directly; for multiple websites, choose the website and click **Guided setup**. The administrator follows four short screens with Back and Continue:
+
+1. **Connect:** confirm the detected HTTPS address, app name, currency and app enablement. Existing choices are loaded; an ambiguous address or restaurant POS is not guessed.
+2. **Benefits:** choose a loyalty template or an existing/custom native program. The loyalty starters offer points for a percentage discount or a fixed discount, with editable earning rate, threshold and value. Optional gift cards start at 50, 100 and 200 in the website currency; optional birthday credit starts at 50 with 21-day validity. These are starting values for the administrator to review, not approved customer rules. Gift/birthday options default to keeping current settings. Native **Create and Edit** remains available for custom programs and saves those native records immediately.
+3. **Customers:** optionally enable signup with approved terms/privacy, sender and policy version. Select a restaurant POS for ordering. Signup may stay off until mail and policies are ready.
+4. **Review:** see exactly what will be created, published, connected or left unchanged; acknowledge the choices and click **Apply setup**. Template programs/products are created only here. Applying setup creates no customer accounts, loyalty cards, balances, emails or orders. Newly enabled birthday scheduling can issue credits on its next normal scheduled run; the review shows its audience and amount.
+
+After Apply, the setup checklist shows remaining email, menu and app checks. **Guided setup** reopens the guide; advanced settings and native program editing remain available. Configuration checks are not delivery or device tests. Publisher connection export remains on the saved checklist, outside the customer app.
+
+New templates are company/website/currency scoped. Their POS availability is restricted to the selected restaurant POS; without a POS selected, new programs have POS use off. Native Sales and website checkout are enabled. Gift products are service products and use native company tax defaults; verify prices, taxes, payment configuration and checkout before selling. Gift templates require matching company/website currencies; use existing products/pricelists for other currency configurations. Birthday credit uses a separate gift-card program with no sale-trigger rules.
+
+Repeat setup reuses the recorded template program and keeps edited native rules, product prices and publication state. Archived or incompatible retained programs cause a useful error instead of silently creating replacements. Concurrent/stale guides are rejected before creating business records. The template IDs live in namespaced configuration keys: connector uninstall retains them, explicit full data removal clears them while leaving native programs/products/cards/balances intact. After full app-data removal, select existing native programs to reconnect them.
+
+Deploy both updated addon folders and **upgrade Jenny’s Rewards**, without uninstalling. The data-addon change only extends its existing removal hook; it adds no persistent schema or installation data. No Android rebuild is needed when the instance address stays the same.
+
+Validation: Python/XML parsing, addon imports against official Odoo 19 and 15 database-free validation/security/escaping tests pass. Ten native wizard tests are supplied in `tests/test_setup_wizard.py`, alongside the earlier seven setup tests. The GitHub **Odoo setup checks** workflow installs the module and runs these tests on a disposable PostgreSQL database. Its result must be reviewed before treating the native install/ORM checks as passed. This does not replace real upgrade/uninstall/reinstall, email delivery, native POS/payment and device acceptance tests.
+
+## Previous checklist update (19.0.4.3.0)
 
 The overview now puts **Open setup checklist** first. With one available website, it opens that website directly; with several, the administrator chooses one. The screen groups connection/loyalty and member signup into two tabs and shows the next action for each feature.
 

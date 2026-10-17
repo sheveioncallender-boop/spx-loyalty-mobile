@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_spx_mobile_removal_admin,Customer app removal administrator,model_spx_mobile_removal,base.group_system,1,1,1,1
 access_spx_mobile_connection_admin,Customer app connection administrator,model_spx_mobile_connection,base.group_system,1,1,1,1
 access_spx_birthday_issue_admin,Birthday issue administrator,model_spx_mobile_birthday_issue,base.group_system,1,1,1,1
+access_spx_setup_wizard_admin,App setup administrator,model_spx_mobile_setup_wizard,base.group_system,1,1,1,1

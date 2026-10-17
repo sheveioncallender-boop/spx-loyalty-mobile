@@ -20,10 +20,10 @@
                     </div>
                 </section>
                 <section class="jr-settings" aria-label="App setup">
-                    <div class="jr-settings-copy"><h2>Start here: app setup</h2><p>Connect this website, select loyalty and ordering, and see exactly what still needs attention.</p></div>
+                    <div class="jr-settings-copy"><h2>Your app, ready in a few steps.</h2><p>Connect, choose your benefits, and review. Start with a template or use your own programs.</p></div>
                     <button type="button" class="jr-settings-button" t-att-disabled="state.opening !== null"
                             t-on-click="() => this.openAction('setup', 'mobile_setup_action')">
-                        <t t-if="state.opening === 'setup'">Opening…</t><t t-else="">Open setup checklist <span aria-hidden="true">↗</span></t>
+                        <t t-if="state.opening === 'setup'">Opening…</t><t t-else="">Set up your app <span aria-hidden="true">↗</span></t>
                     </button>
                 </section>
                 <div class="jr-section-heading">
