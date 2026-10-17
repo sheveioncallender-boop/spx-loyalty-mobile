@@ -330,5 +330,10 @@ class DineInAPI(MobileAPI):
             ('partner_id', '=', partner.id), ('company_id', '=', website.company_id.id),
             ('config_id', '=', config.id), ('state', 'in', ['draft', 'paid', 'done', 'cancel']),
         ], order='date_order desc, id desc', limit=40)
-        return [{'name': o.pos_reference or o.name, 'date': self._date(o.date_order),
-                 'total': o.amount_total, 'currency': o.currency_id.name, 'state': o.state} for o in orders]
+        return [self._order_data(o) for o in orders]
+
+    def _order_data(self, order):
+        """Extension hook for optional native checkout; no payment tokens in history."""
+        return {'id': order.id, 'name': order.pos_reference or order.name,
+                'date': self._date(order.date_order), 'total': order.amount_total,
+                'currency': order.currency_id.name, 'state': order.state}

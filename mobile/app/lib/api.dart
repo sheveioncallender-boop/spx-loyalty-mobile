@@ -432,6 +432,26 @@ class OdooApi implements MobileApi {
   @override
   Future<List<dynamic>> orders() async =>
       await rpc('/spx/mobile/v2/dine-in/orders') as List<dynamic>;
+
+  Future<String> paymentPage(int orderId) async {
+    final result =
+        await rpc('/spx/mobile/v2/dine-in/payment', {'order_id': orderId})
+            as Json;
+    final path = result['path'];
+    if (result['order_id'] != orderId || path is! String) {
+      throw AppError('This bill is unavailable. Please refresh your orders.');
+    }
+    final uri = page(path);
+    if (uri.userInfo.isNotEmpty ||
+        uri.hasFragment ||
+        uri.path != '/pos/pay/$orderId' ||
+        uri.queryParameters['access_token']?.isNotEmpty != true ||
+        uri.queryParameters.keys.any((key) => key != 'access_token')) {
+      throw AppError('This bill is unavailable. Please refresh your orders.');
+    }
+    return path;
+  }
+
   @override
   Future<void> preferences(bool enabled) async {
     await rpc('/spx/mobile/v1/preferences', {'promotional_email': enabled});

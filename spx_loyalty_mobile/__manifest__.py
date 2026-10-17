@@ -1,6 +1,6 @@
 {
     'name': "Jenny's Rewards",
-    'version': '19.0.4.4.3',
+    'version': '19.0.4.5.0',
     'summary': "Jenny's customer cards, loyalty, messages and mobile app",
     'author': 'SPXCORP LTD',
     'license': 'LGPL-3',

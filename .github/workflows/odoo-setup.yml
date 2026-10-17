@@ -1,10 +1,18 @@
 name: Odoo setup checks
 
 on:
+  push:
+    branches: ['codex/member-extras-19.0.4']
+    paths:
+      - 'spx_loyalty_mobile/**'
+      - 'spx_loyalty_mobile_pos_payment/**'
+      - 'spx_loyalty_mobile_data/**'
+      - '.github/workflows/odoo-setup.yml'
   pull_request:
     paths:
       - 'spx_loyalty_mobile/**'
       - 'spx_loyalty_mobile_data/**'
+      - 'spx_loyalty_mobile_pos_payment/**'
       - '.github/workflows/odoo-setup.yml'
   workflow_dispatch:
 
@@ -50,6 +58,6 @@ jobs:
           "$RUNNER_TEMP/odoo-venv/bin/python" "$RUNNER_TEMP/odoo/odoo-bin" \
             --addons-path="$RUNNER_TEMP/odoo/addons,$GITHUB_WORKSPACE" \
             --db_host=127.0.0.1 --db_user=odoo --db_password=odoo_ci_only \
-            --database=jenny_setup_ci --init=spx_loyalty_mobile --without-demo=all \
-            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope,/spx_loyalty_mobile:TestDineInNative' \
+            --database=jenny_setup_ci --init=spx_loyalty_mobile_pos_payment --without-demo=all \
+            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope,/spx_loyalty_mobile:TestDineInNative,/spx_loyalty_mobile_pos_payment:TestMobilePOSCheckout' \
             --stop-after-init --http-interface=127.0.0.1 --log-level=test

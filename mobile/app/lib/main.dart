@@ -766,7 +766,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (mounted) unawaited(refresh(silent: true));
   }
 
-  Future<void> openWeb(String path, String title) async {
+  Future<void> openWeb(
+    String path,
+    String title, {
+    bool checkout = false,
+  }) async {
     if (api is! OdooApi) {
       toast(
         context,
@@ -783,7 +787,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _revision++;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => WebsitePage(api: live, path: path, title: title),
+          builder: (_) => WebsitePage(
+            api: live,
+            path: path,
+            title: title,
+            checkout: checkout,
+          ),
         ),
       );
       _webOpen = false;
@@ -2115,6 +2124,27 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
+  bool _startingPayment = false;
+
+  Future<void> payOrder(Json order) async {
+    if (_startingPayment || api is! OdooApi || order['id'] is! int) return;
+    _startingPayment = true;
+    _notifySheets();
+    try {
+      final path = await (api as OdooApi).paymentPage(order['id'] as int);
+      if (!mounted || _signingOut) return;
+      await openWeb(path, 'Pay your bill', checkout: true);
+    } catch (e) {
+      if (mounted) toast(context, customerError(e));
+    } finally {
+      _startingPayment = false;
+      if (mounted) {
+        await _refreshOrders();
+        _notifySheets();
+      }
+    }
+  }
+
   Future<void> orderHistory() async {
     _ordersOpen = true;
     _orderData = null;
@@ -2124,7 +2154,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => Scaffold(
-            appBar: AppBar(title: const Text('Your orders')),
+            appBar: AppBar(
+              title: const Text('Your orders'),
+              actions: [
+                IconButton(
+                  tooltip: 'Refresh orders',
+                  onPressed: _refreshOrders,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
             body: ListenableBuilder(
               listenable: _sheetUpdates,
               builder: (context, _) {
@@ -2156,6 +2195,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                         (o) => OrderStatusCard(
                           key: ValueKey(o['name']),
                           order: o as Json,
+                          onPay: api is OdooApi ? () => payOrder(o) : null,
+                          paymentBusy: _startingPayment,
                         ),
                       )
                       .toList(),
@@ -2860,11 +2901,13 @@ class _LoadingSkeletonState extends State<LoadingSkeleton>
 class WebsitePage extends StatefulWidget {
   final OdooApi api;
   final String path, title;
+  final bool checkout;
   const WebsitePage({
     super.key,
     required this.api,
     required this.path,
     required this.title,
+    this.checkout = false,
   });
   @override
   State<WebsitePage> createState() => _WebsitePageState();
@@ -2933,6 +2976,17 @@ class _WebsitePageState extends State<WebsitePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    bottomNavigationBar: widget.checkout
+        ? SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Back to my orders'),
+              ),
+            ),
+          )
+        : null,
     appBar: AppBar(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
