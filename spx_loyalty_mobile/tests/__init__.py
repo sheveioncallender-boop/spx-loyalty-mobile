@@ -8,3 +8,4 @@ from . import test_engagement
 from . import test_lifecycle
 from . import test_setup
 from . import test_setup_wizard
+from . import test_native_workflows

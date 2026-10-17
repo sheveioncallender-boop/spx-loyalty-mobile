@@ -45,11 +45,11 @@ jobs:
           git -C "$RUNNER_TEMP/odoo" checkout FETCH_HEAD
           python3 -m venv "$RUNNER_TEMP/odoo-venv"
           "$RUNNER_TEMP/odoo-venv/bin/pip" install -r "$RUNNER_TEMP/odoo/requirements.txt"
-      - name: Install addon and test guided setup on a disposable database
+      - name: Install addon and test setup and native workflows on a disposable database
         run: |
           "$RUNNER_TEMP/odoo-venv/bin/python" "$RUNNER_TEMP/odoo/odoo-bin" \
             --addons-path="$RUNNER_TEMP/odoo/addons,$GITHUB_WORKSPACE" \
             --db_host=127.0.0.1 --db_user=odoo --db_password=odoo_ci_only \
             --database=jenny_setup_ci --init=spx_loyalty_mobile --without-demo=all \
-            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup' \
+            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope' \
             --stop-after-init --http-interface=127.0.0.1 --log-level=test
