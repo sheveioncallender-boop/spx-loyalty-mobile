@@ -1,4 +1,4 @@
-# Jenny’s connector 19.0.4.4.0 and Android 0.8.0+15
+# Jenny’s connector 19.0.4.4.1 and Android 0.8.0+15
 
 This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1+14. It is not cleared for the live customer database until the lifecycle and business-flow tests below pass on a disposable Odoo 19 instance.
 
@@ -20,6 +20,10 @@ This is the next test release, built on member extras 19.0.4.1.0 / Android 0.7.1
 4. Verify the expected versions and record IDs before testing uninstall. Keep both addon folders available while the data dependency remains installed, including while the connector is uninstalled.
 
 Fresh instances: install **Jenny’s Rewards**; its data dependency installs automatically. Open **Jenny’s Rewards → App setup**. No demo contacts, products, balances or old-instance data are installed.
+
+## Setup display correction (19.0.4.4.1)
+
+The deployed guide revealed missing labels beside its policy and final-review checkboxes. Both now have explicit labels. Native program and outgoing-email actions also clear the website picker's `create=False` context so administrators can see the normal creation controls. Odoo access rights remain in force. Upgrade Jenny’s Rewards after pulling this correction; no customer data or reward rules change.
 
 ## Four-step setup (19.0.4.4.0)
 

@@ -191,7 +191,7 @@ class Website(models.Model):
         return {'type': 'ir.actions.act_window', 'name': _('Loyalty programs'),
                 'res_model': 'loyalty.program', 'view_mode': 'list,form',
                 'domain': self._mobile_program_domain(),
-                'context': {'default_program_type': 'loyalty', 'default_company_id': self.company_id.id,
+                'context': {'create': True, 'default_program_type': 'loyalty', 'default_company_id': self.company_id.id,
                             'default_website_id': self.id}}
 
     def action_mobile_connection(self):
@@ -211,5 +211,7 @@ class Website(models.Model):
     def action_mobile_email_settings(self):
         self.ensure_one()
         self._mobile_setup_admin()
-        return {'type': 'ir.actions.act_window', 'name': _('Outgoing mail servers'),
-                'res_model': 'ir.mail_server', 'view_mode': 'list,form'}
+        action = self.env['ir.actions.actions']._for_xml_id('base.action_ir_mail_server_list')
+        # The website picker can pass create=False; do not hide native SMTP setup.
+        action['context'] = {'create': True}
+        return action

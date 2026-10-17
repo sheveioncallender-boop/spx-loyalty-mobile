@@ -91,7 +91,10 @@
                             <field name="policy_version"/>
                         </group>
                         <group><field name="terms"/><field name="privacy"/></group>
-                        <field name="policies_confirmed"/>
+                        <div class="d-flex align-items-start gap-2 my-3">
+                            <field name="policies_confirmed" nolabel="1" class="mb-0"/>
+                            <label for="policies_confirmed"/>
+                        </div>
                         <p class="jr-setup-note">Your publisher will check verification-email delivery before release.</p>
                     </div>
                     <div class="jr-setup-card">
@@ -104,7 +107,10 @@
                     <h2>Ready to apply?</h2>
                     <p class="text-muted">Review your choices. Use Back if you want to adjust anything.</p>
                     <field name="review" nolabel="1" readonly="1"/>
-                    <field name="confirmed"/>
+                    <div class="d-flex align-items-start gap-2 my-3">
+                        <field name="confirmed" nolabel="1" class="mb-0"/>
+                        <label for="confirmed"/>
+                    </div>
                     <p class="jr-setup-note">After saving, the checklist will guide you through email, menu and app testing.</p>
                 </div>
                 <footer>

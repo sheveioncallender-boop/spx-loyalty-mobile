@@ -224,7 +224,7 @@ class AppSetupWizard(models.TransientModel):
         return {'type': 'ir.actions.act_window', 'name': _('Set up your app'),
                 'res_model': self._name, 'res_id': self.id, 'view_mode': 'form',
                 'views': [(self.env.ref('spx_loyalty_mobile.app_setup_wizard_form').id, 'form')],
-                'target': 'new'}
+                'target': 'new', 'context': dict(self.env.context, create=True)}
 
     def action_next(self):
         self._admin()
