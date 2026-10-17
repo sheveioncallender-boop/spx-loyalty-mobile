@@ -40,7 +40,7 @@ class TestDineInNative(TestPoSCommon):
         cls.api = DineInAPI()
 
     @contextmanager
-    def customer(self, user=None):
+    def as_customer(self, user=None):
         req = SimpleNamespace(env=self.env(user=(user or self.alice).id), website=self.website)
         with patch('odoo.http.request', req), \
              patch('odoo.addons.spx_loyalty_mobile.controllers.api.request', req), \
@@ -51,7 +51,7 @@ class TestDineInNative(TestPoSCommon):
         before = self.env['pos.order'].search_count([])
         cards_before = self.env['loyalty.card'].search_count([])
         history_before = self.env['loyalty.history'].search_count([])
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 2)
             self.assertEqual(self.env['pos.order'].search_count([]), before)
             self.assertEqual(cart['total'], 200)
@@ -77,7 +77,7 @@ class TestDineInNative(TestPoSCommon):
         self.assertTrue(all(isinstance(tag.get('colorIndex'), int) for tag in tags))
 
     def test_price_edit_requires_new_review_and_unpublish_blocks_submission(self):
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
             self.product.list_price = 125
             changed = self.api.dine_submit(cart['basket_key'], cart['quote'])
@@ -90,9 +90,9 @@ class TestDineInNative(TestPoSCommon):
         self.assertFalse(self.env['spx.mobile.submission'].search([('website_id', '=', self.website.id)]))
 
     def test_customer_cannot_mutate_another_basket_or_read_internal_models(self):
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
-        with self.customer(self.bob), self.assertRaises(UserError):
+        with self.as_customer(self.bob), self.assertRaises(UserError):
             self.api.dine_update(self.product.id, 0, cart['basket_key'])
         basket = self.env['spx.mobile.basket'].search([('partner_id', '=', self.alice.partner_id.id)])
         self.assertTrue(basket.items)
@@ -101,7 +101,7 @@ class TestDineInNative(TestPoSCommon):
 
     def test_zero_total_stays_unpaid_for_staff(self):
         self.product.list_price = 0
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
             received = self.api.dine_submit(cart['basket_key'], cart['quote'])
         order = self.env['pos.order'].search([('pos_reference', '=', received['order']['name'])])
@@ -109,28 +109,28 @@ class TestDineInNative(TestPoSCommon):
         self.assertFalse(order.payment_ids)
 
     def test_retry_after_source_order_removed_does_not_recreate_it(self):
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
             received = self.api.dine_submit(cart['basket_key'], cart['quote'])
         self.env['pos.order'].search([('pos_reference', '=', received['order']['name'])]).unlink()
-        with self.customer():
+        with self.as_customer():
             self.assertEqual(self.api.dine_submit(cart['basket_key'], cart['quote']), received)
 
     def test_closed_session_rejects_submission_without_creating_order(self):
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
         self.config.current_session_id.state = 'closing_control'
         before = self.env['pos.order'].search_count([])
-        with self.customer(), self.assertRaises(UserError):
+        with self.as_customer(), self.assertRaises(UserError):
             self.api.dine_submit(cart['basket_key'], cart['quote'])
         self.assertEqual(self.env['pos.order'].search_count([]), before)
 
     def test_order_history_excludes_other_customer(self):
-        with self.customer():
+        with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
             received = self.api.dine_submit(cart['basket_key'], cart['quote'])
             self.assertIn(received['order']['name'], [o['name'] for o in self.api.dine_orders()])
-        with self.customer(self.bob):
+        with self.as_customer(self.bob):
             self.assertEqual(self.api.dine_orders(), [])
 
     def test_guided_gift_and_birthday_templates_pass_native_pos_startup(self):
