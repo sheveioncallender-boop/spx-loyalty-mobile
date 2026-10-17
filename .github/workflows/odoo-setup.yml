@@ -1,0 +1,63 @@
+name: Odoo setup checks
+
+on:
+  push:
+    branches: ['codex/member-extras-19.0.4']
+    paths:
+      - 'spx_loyalty_mobile/**'
+      - 'spx_loyalty_mobile_pos_payment/**'
+      - 'spx_loyalty_mobile_data/**'
+      - '.github/workflows/odoo-setup.yml'
+  pull_request:
+    paths:
+      - 'spx_loyalty_mobile/**'
+      - 'spx_loyalty_mobile_data/**'
+      - 'spx_loyalty_mobile_pos_payment/**'
+      - '.github/workflows/odoo-setup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo_ci_only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U odoo -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Odoo build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-dev python3-venv libldap2-dev libsasl2-dev libpq-dev libxml2-dev libxslt1-dev libjpeg-dev zlib1g-dev libffi-dev
+      - name: Prepare official Odoo 19
+        run: |
+          git init "$RUNNER_TEMP/odoo"
+          git -C "$RUNNER_TEMP/odoo" remote add origin https://github.com/odoo/odoo.git
+          git -C "$RUNNER_TEMP/odoo" fetch --depth=1 origin dbe0c5015da3b1f00c25613572fed695d8470d20
+          git -C "$RUNNER_TEMP/odoo" checkout FETCH_HEAD
+          python3 -m venv "$RUNNER_TEMP/odoo-venv"
+          "$RUNNER_TEMP/odoo-venv/bin/pip" install -r "$RUNNER_TEMP/odoo/requirements.txt"
+      - name: Install addon and test setup and native workflows on a disposable database
+        run: |
+          "$RUNNER_TEMP/odoo-venv/bin/python" "$RUNNER_TEMP/odoo/odoo-bin" \
+            --addons-path="$RUNNER_TEMP/odoo/addons,$GITHUB_WORKSPACE" \
+            --db_host=127.0.0.1 --db_user=odoo --db_password=odoo_ci_only \
+            --database=jenny_setup_ci --init=spx_loyalty_mobile_pos_payment --without-demo=all \
+            --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope,/spx_loyalty_mobile:TestDineInNative,/spx_loyalty_mobile_pos_payment:TestMobilePOSCheckout' \
+            --stop-after-init --http-interface=127.0.0.1 --log-level=test

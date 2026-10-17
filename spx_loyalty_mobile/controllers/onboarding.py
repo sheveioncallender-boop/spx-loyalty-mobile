@@ -11,6 +11,16 @@ from ..models.onboarding import email_value, digest, password_value, AccountLink
 
 
 class AccountController(http.Controller):
+    @http.route('/spx/mobile/v1/connection', type='jsonrpc', auth='public', website=True, methods=['POST'])
+    def connection(self, database=''):
+        # Read-only test setup handshake. No credentials, contacts or balances.
+        # Domain/db-filter selects the database before this route is invoked.
+        return {
+            'service': 'spx_loyalty_mobile', 'api_version': 1,
+            'enabled': bool(request.website.sudo().spx_mobile_enabled),
+            'database_matches': isinstance(database, str) and database == request.env.cr.dbname,
+        }
+
     def _scope(self, email='', *, browser_form=False, registration=True):
         website = request.website.sudo()
         if registration:
