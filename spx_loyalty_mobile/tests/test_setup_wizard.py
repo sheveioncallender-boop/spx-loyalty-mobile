@@ -50,6 +50,7 @@ class TestGuidedSetup(TransactionCase):
         self.assertEqual(self.counts()[2:], before[2:])
         loyalty = self.website.spx_mobile_program_ids
         self.assertEqual(loyalty.program_type, 'loyalty')
+        self.assertEqual(loyalty.applies_on, 'future')
         self.assertEqual(loyalty.rule_ids.reward_point_mode, 'money')
         self.assertEqual(loyalty.reward_ids.required_points, 100)
         gift = self.website.spx_gift_program_ids

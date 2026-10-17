@@ -303,7 +303,7 @@ class AppSetupWizard(models.TransientModel):
             'program_type': 'loyalty' if kind == 'loyalty' else 'gift_card',
             'company_id': self.company_id.id, 'website_id': self.website_id.id,
             'currency_id': self.currency_id.id, 'active': True,
-            'applies_on': 'both' if kind == 'loyalty' else 'future', 'trigger': 'auto',
+            'applies_on': 'future', 'trigger': 'auto',
             'portal_visible': True, 'portal_point_name': _('Points') if kind == 'loyalty' else self.currency_id.symbol,
             'sale_ok': True, 'ecommerce_ok': True, 'pos_ok': bool(self.pos_config_id),
             'pos_config_ids': [Command.set(self.pos_config_id.ids)],

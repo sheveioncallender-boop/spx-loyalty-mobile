@@ -22,7 +22,7 @@ class TestDineInNative(TestPoSCommon):
                           'available_pricelist_ids': [Command.set(cls.currency_pricelist.ids)]})
         cls.config.open_ui()
         if cls.config.current_session_id.state == 'opening_control':
-            cls.config.current_session_id.action_pos_session_open()
+            cls.config.current_session_id.set_opening_control(0, 'Disposable acceptance tests')
         cls.website = cls.env['website'].create({'name': 'Dine-in tests', 'company_id': cls.config.company_id.id,
                                                 'spx_mobile_enabled': True, 'spx_mobile_pos_config_id': cls.config.id})
         cls.alice, cls.bob = cls.env['res.users'].with_context(no_reset_password=True).create([
@@ -87,14 +87,14 @@ class TestDineInNative(TestPoSCommon):
             latest = self.api.dine_submit(cart['basket_key'], changed['cart']['quote'])
             self.assertEqual(latest['status'], 'changed')
             self.assertFalse(latest['cart']['can_submit'])
-        self.assertFalse(self.env['spx.mobile.submission'].search([('website_id', '=', self.website.id)]))
+        self.assertFalse(self.env['spx.mobile.submission'].sudo().search([('website_id', '=', self.website.id)]))
 
     def test_customer_cannot_mutate_another_basket_or_read_internal_models(self):
         with self.as_customer():
             cart = self.api.dine_add(self.product.id, 1)
         with self.as_customer(self.bob), self.assertRaises(UserError):
             self.api.dine_update(self.product.id, 0, cart['basket_key'])
-        basket = self.env['spx.mobile.basket'].search([('partner_id', '=', self.alice.partner_id.id)])
+        basket = self.env['spx.mobile.basket'].sudo().search([('partner_id', '=', self.alice.partner_id.id)])
         self.assertTrue(basket.items)
         with self.assertRaises(AccessError):
             basket.with_user(self.bob).read(['items'])
