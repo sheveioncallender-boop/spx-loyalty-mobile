@@ -120,7 +120,7 @@ class TestMobilePOSCheckout(TestDineInNative):
             # The generic disposable provider has no capture feature by
             # default. Enable it for this fixture so native validation can
             # create the authorized attempt whose handoff we must reject.
-            self.provider.support_manual_capture = True
+            self.provider.support_manual_capture = 'full_only'
         return self.env['payment.transaction'].create({
             'provider_id': self.provider.id,
             'payment_method_id': self.env.ref('payment.payment_method_unknown').id,
