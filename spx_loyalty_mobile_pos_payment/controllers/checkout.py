@@ -31,6 +31,23 @@ class MobilePOSCheckout(DineInAPI):
         if order.state != 'draft' or order.session_id.state != 'opened':
             return None
         amount = order._get_checked_next_online_payment_amount()
+        if not amount:
+            # Closing the POS QR dialog clears its next amount, but Odoo's
+            # portal still allows the unpaid balance to be retried. Recover
+            # that handoff only after the latest attempt failed, for the same
+            # customer, currency and balance. A newly submitted bill must
+            # still wait for the cashier; never manufacture a payment request.
+            tx = request.env['payment.transaction'].sudo().search([
+                ('pos_order_id', '=', order.id),
+            ], order='id desc', limit=1)
+            if (not tx or tx.state not in ('cancel', 'error')
+                    or tx.partner_id != order.partner_id
+                    or tx.company_id != order.company_id
+                    or tx.currency_id != order.currency_id):
+                return None
+            amount = PaymentPortal._get_amount_to_pay(order)
+            if order.currency_id.compare_amounts(tx.amount, amount) != 0:
+                return None
         if not amount or order.currency_id.compare_amounts(amount, 0) <= 0:
             return None
         method = order.online_payment_method_id
@@ -73,3 +90,4 @@ class MobilePOSCheckout(DineInAPI):
         token = order._portal_ensure_token()
         return {**offer, 'order_id': order.id,
                 'path': PaymentPortal._get_pay_route(order.id, token)}
+

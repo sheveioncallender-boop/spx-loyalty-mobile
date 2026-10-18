@@ -1,6 +1,6 @@
 {
     'name': "Jenny's Rewards - Native POS Checkout",
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': 'Open the cashier-prepared native POS checkout from the customer app',
     'author': 'SPXCORP LTD',
     'license': 'LGPL-3',
@@ -8,3 +8,4 @@
     'auto_install': True,
     'installable': True,
 }
+

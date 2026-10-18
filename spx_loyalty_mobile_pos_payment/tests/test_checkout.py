@@ -115,6 +115,77 @@ class TestMobilePOSCheckout(TestDineInNative):
             with self.as_customer(), self.assertRaises(AccessError):
                 self.api.dine_payment(value)
 
+    def make_attempt(self, order, state='error', amount=100.0):
+        return self.env['payment.transaction'].create({
+            'provider_id': self.provider.id,
+            'payment_method_id': self.env.ref('payment.payment_method_unknown').id,
+            'reference': f'checkout-retry-{order.id}-{state}',
+            'amount': amount, 'currency_id': order.currency_id.id,
+            'partner_id': order.partner_id.id, 'pos_order_id': order.id,
+            'operation': 'online_redirect', 'state': state,
+        })
+
+    def test_failed_checkout_survives_closed_pos_request_without_writes(self):
+        for state in ('error', 'cancel'):
+            order = self.make_order()
+            order.get_and_set_online_payments_data(100.0)
+            self.make_attempt(order, state)
+            order.get_and_set_online_payments_data(0)
+            models = ['pos.order', 'pos.payment', 'payment.transaction',
+                      'account.payment', 'account.move', 'loyalty.history']
+            before = {model: self.env[model].search_count([]) for model in models}
+            with self.as_customer():
+                self.assertEqual(self.api._order_data(order)['payment_offer']['amount'], 100)
+                first = self.api.dine_payment(order.id)
+                self.assertEqual(first, self.api.dine_payment(order.id))
+            self.assertEqual(urlsplit(first['path']).path, f'/pos/pay/{order.id}')
+            self.assertEqual(first['amount'], 100)
+            self.assertEqual(order.next_online_payment_amount, 0)
+            self.assertEqual(order.state, 'draft')
+            self.assertFalse(order.payment_ids)
+            self.assertEqual(before, {model: self.env[model].search_count([]) for model in models})
+
+    def test_retry_does_not_replace_newer_in_flight_or_successful_attempt(self):
+        for state in ('draft', 'pending', 'authorized', 'done'):
+            order = self.make_order()
+            self.make_attempt(order)
+            self.make_attempt(order, state)
+            with self.as_customer(), self.assertRaises(UserError):
+                self.api.dine_payment(order.id)
+
+    def test_retry_does_not_expand_partial_amount_or_reassigned_customer(self):
+        order = self.make_order()
+        tx = self.make_attempt(order, amount=30.0)
+        with self.as_customer(), self.assertRaises(UserError):
+            self.api.dine_payment(order.id)
+        # A newly prepared split amount takes precedence over old attempts.
+        order.get_and_set_online_payments_data(20.0)
+        with self.as_customer():
+            self.assertEqual(self.api.dine_payment(order.id)['amount'], 20)
+        order.get_and_set_online_payments_data(0)
+        tx.amount = 100.0
+        order.partner_id = self.bob.partner_id
+        with self.as_customer(self.bob), self.assertRaises(UserError):
+            self.api.dine_payment(order.id)
+
+    def test_retry_still_requires_open_unpaid_order_and_published_provider(self):
+        order = self.make_order()
+        self.make_attempt(order)
+        self.provider.is_published = False
+        with self.as_customer(), self.assertRaises(UserError):
+            self.api.dine_payment(order.id)
+        self.provider.is_published = True
+        order.session_id.state = 'closing_control'
+        with self.as_customer(), self.assertRaises(UserError):
+            self.api.dine_payment(order.id)
+        order.session_id.state = 'opened'
+        for state in ('paid', 'done', 'cancel'):
+            another = self.make_order()
+            self.make_attempt(another)
+            another.state = state
+            with self.as_customer(), self.assertRaises(UserError):
+                self.api.dine_payment(another.id)
+
     def test_scotia_receipt_reads_only_verified_exact_payment_relation(self):
         order = self.make_order()
         tx = SimpleNamespace(
@@ -139,3 +210,4 @@ class TestMobilePOSCheckout(TestDineInNative):
         tx.pos_order_id = order
         tx._fields = {}  # A regular Odoo installation without the Scotia addon.
         self.assertIsNone(self.api._payment_card_details(payment))
+
