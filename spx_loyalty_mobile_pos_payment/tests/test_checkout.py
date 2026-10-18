@@ -116,6 +116,11 @@ class TestMobilePOSCheckout(TestDineInNative):
                 self.api.dine_payment(value)
 
     def make_attempt(self, order, state='error', amount=100.0):
+        if state == 'authorized':
+            # The generic disposable provider has no capture feature by
+            # default. Enable it for this fixture so native validation can
+            # create the authorized attempt whose handoff we must reject.
+            self.provider.support_manual_capture = True
         return self.env['payment.transaction'].create({
             'provider_id': self.provider.id,
             'payment_method_id': self.env.ref('payment.payment_method_unknown').id,
