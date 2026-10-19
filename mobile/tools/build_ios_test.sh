@@ -18,8 +18,8 @@ case "$mode" in
 esac
 flutter pub get
 defines=(
-  --dart-define=JENNYS_API_URL=https://jennys.spxcorp.site
-  --dart-define=JENNYS_DATABASE=jennys.spxcorp.site
+  --dart-define=JENNYS_API_URL=https://jennysontheboulevard.spxcorp.site
+  --dart-define=JENNYS_DATABASE=jennysontheboulevard.spxcorp.site
 )
 
 case "$mode" in

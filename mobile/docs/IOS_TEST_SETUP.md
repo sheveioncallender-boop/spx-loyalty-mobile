@@ -1,4 +1,4 @@
-# Jenny’s iPhone test setup — 0.6.0+12
+# Jenny’s iPhone test setup — 0.10.0+19
 
 The iPhone version shares Jenny’s approved Android design and app flow. It uses the same test instance, accounts, cards, products and native POS workflow. An existing customer signs in with the same email and password; installing on another phone does not require another customer or card.
 
@@ -43,9 +43,32 @@ Apple explains the difference between a Personal Team and program membership in 
    bash tools/build_ios_test.sh device YOUR_DEVICE_ID
    ```
 
-The helper supplies the approved test origin `https://jennys.spxcorp.site` and database `jennys.spxcorp.site`. These are build configuration, with no customer-facing server selector. No passwords, tokens or administrative keys are embedded. The helper does not deploy the connector or submit test orders.
+The helper supplies the approved test origin `https://jennysontheboulevard.spxcorp.site` and database `jennysontheboulevard.spxcorp.site`. These are build configuration, with no customer-facing server selector. No passwords, tokens or administrative keys are embedded. The helper does not deploy the connector or submit test orders.
 
 For an iOS simulator build, use `bash tools/build_ios_test.sh simulator`. A simulator `.app` cannot be installed on the physical iPhone. Run the supplied `RunnerTests` through Xcode’s **Product → Test** using an available iOS simulator to compile and exercise the native cookie validation tests.
+
+## Codemagic setup — October 19, 2026
+
+Use repository `sheveioncallender-boop/spx-loyalty-mobile`, branch
+`codex/member-extras-19.0.4`, and project path `mobile/app`.
+The Workflow Editor is configured for iOS only on macOS M2, Flutter **3.47.4**,
+release mode, and these additional iOS build arguments:
+
+```text
+--dart-define=JENNYS_API_URL=https://jennysontheboulevard.spxcorp.site --dart-define=JENNYS_DATABASE=jennysontheboulevard.spxcorp.site
+```
+
+The Xcode project uses Flutter's generated Swift Package Manager integration.
+There is no checked-in Podfile; do not replace the existing dependency setup
+merely to configure the build service.
+
+Apple signing is currently disabled because this Codemagic account has no
+App Store Connect API key configured. An unsigned build can check compilation,
+but cannot be installed on a physical iPhone or sent to TestFlight.
+No successful Codemagic compilation or signed artifact has yet been verified.
+Connect the publisher's Apple Developer account securely in Codemagic before
+configuring signing for `net.spxcorp.jennysRewards`. Keep credentials out of Git.
+Shorebird and App Store Connect publishing remain disabled.
 
 ## TestFlight
 
@@ -57,7 +80,7 @@ bash tools/build_ios_test.sh ipa
 
 The command builds an archive and attempts a signed IPA export. Review the archive and validation results in Xcode before uploading it to the matching App Store Connect app. Complete Apple’s requested app information and beta testing setup, then invite the test Apple Account through TestFlight. External beta distribution may require Apple’s beta review. This script does not upload or send invitations.
 
-The project version is **0.6.0**, build **12**. Increase the build number for subsequent uploads to the same app version as required. Installation and beta distribution follow [Apple’s TestFlight process](https://developer.apple.com/testflight/).
+The project version is **0.10.0**, build **19**. Increase the build number for subsequent uploads to the same app version as required. Installation and beta distribution follow [Apple’s TestFlight process](https://developer.apple.com/testflight/).
 
 ## What was prepared
 
@@ -71,7 +94,7 @@ The project version is **0.6.0**, build **12**. Increase the build number for su
 
 ## Validation and first device test
 
-**Completed locally:** static analysis; 37 focused Flutter checks for accounts, refresh, ordering, activity, card animation and onboarding; and three additional Flutter layout checks at 375×812, 393×852 and 430×932 with iPhone safe areas. Plists and opaque icon dimensions were checked. All 39 packaged Odoo files and 25 Android project files match the Android 0.6.0 source baseline.
+**Historical preparation checks (0.6.0+12):** static analysis; 37 focused Flutter checks for accounts, refresh, ordering, activity, card animation and onboarding; and three additional Flutter layout checks at 375×812, 393×852 and 430×932 with iPhone safe areas. Plists and opaque icon dimensions were checked. All 39 packaged Odoo files and 25 Android project files match the Android 0.6.0 source baseline.
 
 **Still to run on macOS/iPhone:** Swift compilation, the three native cookie tests, code signing, installation and the following integration checks. Flutter layout checks are not iOS simulator tests.
 
