@@ -6,10 +6,14 @@ orders participate; native confirm_coupon_programs remains the sole writer.
 from copy import deepcopy
 import hashlib
 import json
+import logging
 import math
+from psycopg2 import errors
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class PosOrder(models.Model):
@@ -167,7 +171,15 @@ class PosOrder(models.Model):
     def _process_saved_order(self, draft):
         result = super()._process_saved_order(draft)
         if not draft and self._spx_is_app_order():
-            self._spx_finalize_loyalty()
+            try:
+                # A loyalty/communication failure must not undo Odoo's payment
+                # records. Keep the snapshot for a later native POS confirmation.
+                with self.env.cr.savepoint():
+                    self._spx_finalize_loyalty()
+            except (errors.SerializationFailure, errors.DeadlockDetected):
+                raise  # Let Odoo retry the entire concurrent transaction.
+            except Exception:
+                _logger.exception('App POS loyalty confirmation deferred for order %s', self.id)
         return result
 
     @api.model

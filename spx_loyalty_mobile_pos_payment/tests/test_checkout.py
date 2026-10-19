@@ -306,6 +306,21 @@ class TestMobilePOSCheckout(TestDineInNative):
             order.spx_prepare_loyalty(invalid)
         self.assertFalse(order.spx_loyalty_snapshot)
 
+    def test_loyalty_failure_does_not_undo_native_payment(self):
+        order, program, card, coupons = self.loyalty_fixture()
+        order.spx_prepare_loyalty(coupons)
+        with patch.object(type(order), 'confirm_coupon_programs', side_effect=UserError('Temporary loyalty failure')):
+            with self.assertLogs('odoo.addons.spx_loyalty_mobile_pos_payment.models.pos_order', level='ERROR'):
+                self.pay_native(order)
+        self.assertEqual(order.state, 'paid')
+        self.assertEqual(order.amount_paid, 100)
+        self.assertEqual(len(order.payment_ids), 1)
+        self.assertEqual(card.points, 25)
+        self.assertTrue(order.spx_loyalty_snapshot)
+        self.assertFalse(order.spx_loyalty_finalized)
+        order._spx_finalize_loyalty()
+        self.assertEqual(card.points, 125)
+
     def test_old_paid_bill_recovers_once_without_changing_financial_records(self):
         order, program, card, coupons = self.loyalty_fixture()
         self.pay_native(order)
