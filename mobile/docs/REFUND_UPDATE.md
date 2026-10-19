@@ -14,7 +14,7 @@
   `260-1-000013` (POS order 21). Paid, one Cash payment of -TT$15. The native
   refund did not reverse the original 15 earned points; balance stayed 231.5.
 
-## Correction and deployment gate
+## Correction and live verification
 
 The new bridge reverses the original recorded award after a native full refund
 of an eligible plain app bill. It does not replace any native refund/payment,
@@ -31,9 +31,23 @@ After deploying and upgrading the bridge to **19.0.1.0.3**, open existing refund
 4. Balance becomes **216.5** from **231.5**.
 5. Repeating reconciliation leaves the balance and financial records unchanged.
 
-This reconciliation and its live balance check are **pending deployment**.
-Do not describe the historical balance as corrected until independently read.
-Do not refund the cash again or manually edit the card's balance.
+**Passed on the Enterprise instance after the user upgraded**, 19 October 2026:
+the new action was present on the existing refund and reconciliation completed
+at 9:18 AM Trinidad time. Independently read one issued -15 / used 0 history
+entry linked to the refund, the retained original +15 award, and balance
+**231.5 → 216.5**. Ran the points-only action again and independently verified
+the balance stayed **216.5**, with the same single reversal entry.
+
+After both calls, the refund remained Paid with exactly one Cash payment of
+**-TT$15**, dated 8:31 AM, total/paid -TT$15 and difference zero. No second
+monetary refund or manual card-balance edit was performed. Automated validation
+of implementation commit `cb34f2d53c319611820aec7c4214d098d0e1e705` also passed:
+71 Odoo database tests (zero failures/errors) and three native compiler checks.
+
+This verifies historical reconciliation and duplicate protection on the live
+test instance. Automatic reversal on a newly paid refund remains covered by CI,
+not a new monetary refund on this instance. Android display refresh has not
+been independently observed after this points correction.
 
 Partial-refund loyalty, session/accounting close, physical scanning and iOS
 acceptance remain outstanding. Original native Takeout remains configured;
