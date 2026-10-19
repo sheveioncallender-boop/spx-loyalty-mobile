@@ -53,6 +53,8 @@ jobs:
           git -C "$RUNNER_TEMP/odoo" checkout FETCH_HEAD
           python3 -m venv "$RUNNER_TEMP/odoo-venv"
           "$RUNNER_TEMP/odoo-venv/bin/pip" install -r "$RUNNER_TEMP/odoo/requirements.txt"
+      - name: Test loyalty handoff against the native POS compiler
+        run: ODOO_ROOT="$RUNNER_TEMP/odoo" node --test spx_loyalty_mobile_pos_payment/tests/loyalty_handoff.test.mjs
       - name: Install addon and test setup and native workflows on a disposable database
         run: |
           "$RUNNER_TEMP/odoo-venv/bin/python" "$RUNNER_TEMP/odoo/odoo-bin" \
@@ -61,3 +63,4 @@ jobs:
             --database=jenny_setup_ci --init=spx_loyalty_mobile_pos_payment --without-demo=all \
             --test-enable --test-tags='/spx_loyalty_mobile:TestGuidedSetup,/spx_loyalty_mobile:TestAppSetup,/spx_loyalty_mobile:TestNativeWorkflows,/spx_loyalty_mobile:TestMobileScope,/spx_loyalty_mobile:TestDineInNative,/spx_loyalty_mobile_pos_payment:TestMobilePOSCheckout' \
             --stop-after-init --http-interface=127.0.0.1 --log-level=test
+
