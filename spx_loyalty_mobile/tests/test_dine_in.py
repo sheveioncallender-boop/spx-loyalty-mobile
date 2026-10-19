@@ -158,7 +158,7 @@ class TestDineInNative(TestPoSCommon):
             self.assertEqual(changed['cart']['service'], 'takeaway')
             restored = self.api.dine_service('dine_in', cart['basket_key'])
             self.assertTrue(restored['can_submit'])
-        self.assertFalse(self.env['spx.mobile.submission'].search([
+        self.assertFalse(self.env['spx.mobile.submission'].sudo().search([
             ('website_id', '=', self.website.id)]))
 
     def test_takeaway_selection_is_customer_scoped_and_rejects_delivery(self):
