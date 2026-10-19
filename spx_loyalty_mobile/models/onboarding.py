@@ -3,15 +3,14 @@
 Pending registrations are not users and cannot authenticate through any Odoo API.
 Every mutating service is private and is called by the scoped HTTP controller only.
 """
+
+
 import hashlib
 import re
 import secrets
 import time
 from datetime import timedelta
-from urllib.parse import urlparse
-
 from markupsafe import Markup, escape
-
 from odoo import api, fields, models, Command, SUPERUSER_ID, _
 from odoo.exceptions import UserError, ValidationError, AccessDenied
 from odoo.tools import email_normalize, escape_psql
@@ -59,54 +58,57 @@ def password_value(value):
 class Website(models.Model):
     _inherit = 'website'
 
-    # Keep signup-only columns out of unrelated website reads while new code is
-    # deployed but its module upgrade is pending. Explicit reads still require
-    # the real schema; this does not provide fallback values or skip migration.
-    spx_mobile_signup_enabled = fields.Boolean('Enable verified signup', groups='base.group_system', prefetch=False)
-    spx_mobile_signup_program_id = fields.Many2one('loyalty.program', string='New member loyalty program', groups='base.group_system', prefetch=False)
-    spx_mobile_mail_from = fields.Char('Account email sender', default='no-reply@spxcorp.site', groups='base.group_system', prefetch=False)
-    spx_mobile_account_origin = fields.Char('Account link origin', groups='base.group_system', prefetch=False, help='HTTPS origin only, for example https://jennys.spxcorp.site. Verification and recovery pages are served here.')
-    spx_mobile_terms = fields.Text('Account and rewards terms', groups='base.group_system', prefetch=False)
-    spx_mobile_privacy = fields.Text('Privacy policy', groups='base.group_system', prefetch=False)
-    spx_mobile_policy_version = fields.Char('Policy version', default='1', groups='base.group_system', prefetch=False)
+    def _mobile_signup_setup_issues(self):
+        """Detailed administrator guidance; never returned by the public API."""
+        self.ensure_one()
+        issues = []
+        if not self.spx_mobile_enabled:
+            issues.append(_('Enable the customer app.'))
+        p = self.spx_mobile_signup_program_id
+        if not p:
+            issues.append(_('Choose the loyalty program for new members.'))
+        elif (not p.active or p.program_type != 'loyalty'
+              or (p.company_id and p.company_id != self.company_id)
+              or (p.website_id and p.website_id != self._origin)):
+            issues.append(_('Choose an active loyalty program for this website and company.'))
+        elif p not in self.spx_mobile_program_ids:
+            issues.append(_('Include the new-member program in Visible loyalty programs.'))
+        for value, message in (
+            (self.spx_mobile_terms, _('Enter the approved account and rewards terms.')),
+            (self.spx_mobile_privacy, _('Enter the approved privacy policy.')),
+            (self.spx_mobile_policy_version, _('Enter the policy version.')),
+        ):
+            if not (value or '').strip():
+                issues.append(message)
+        try:
+            email_value(self.spx_mobile_mail_from)
+        except UserError:
+            issues.append(_('Enter a valid account email sender authorized by your mail provider.'))
+        from .lifecycle import connection_origin
+        try:
+            connection_origin(self.spx_mobile_account_origin)
+        except UserError:
+            issues.append(_('Enter the public HTTPS address without /odoo or any other path.'))
+        return issues
 
     def _mobile_signup_config(self):
         self.ensure_one()
-        p = self.spx_mobile_signup_program_id
-        origin = (self.spx_mobile_account_origin or '').rstrip('/')
-        uri = urlparse(origin)
-        if (not self.spx_mobile_enabled or not self.spx_mobile_signup_enabled or not p
-                or not p.active or p.program_type != 'loyalty'
-                or p not in self.spx_mobile_program_ids
-                or (p.company_id and p.company_id != self.company_id)
-                or (p.website_id and p.website_id != self)
-                or not self.spx_mobile_terms or not self.spx_mobile_privacy
-                or not self.spx_mobile_policy_version or not self.spx_mobile_mail_from
-                or uri.scheme != 'https' or not uri.hostname or uri.path
-                or uri.query or uri.fragment or uri.username or uri.password):
+        if not self.spx_mobile_signup_enabled or self._mobile_signup_setup_issues():
             raise UserError(_('Joining is temporarily unavailable. Please contact Jenny’s or try again later.'))
-        email_value(self.spx_mobile_mail_from)
-        return origin
+        return self.spx_mobile_account_origin.strip().rstrip('/')
 
     @api.constrains('spx_mobile_signup_enabled', 'spx_mobile_signup_program_id', 'spx_mobile_program_ids',
                     'spx_mobile_mail_from', 'spx_mobile_account_origin', 'spx_mobile_terms', 'spx_mobile_privacy',
                     'spx_mobile_policy_version')
     def _check_mobile_signup_config(self):
         for w in self.filtered('spx_mobile_signup_enabled'):
-            try:
-                w._mobile_signup_config()
-            except UserError as e:
-                raise ValidationError(_('Complete the signup program, visible programs, HTTPS account origin, sender, terms, privacy and policy version before enabling signup.')) from e
+            issues = w._mobile_signup_setup_issues()
+            if issues:
+                raise ValidationError(_('Before enabling member signup:\n%s', '\n'.join('- ' + issue for issue in issues)))
 
 
 class Users(models.Model):
     _inherit = 'res.users'
-
-    # User prefetch is used by backend actions, login and Discuss. New optional
-    # signup columns must not make those native reads depend on signup's schema.
-    spx_mobile_verified_email = fields.Char('Verified app email', readonly=True, copy=False, groups='base.group_system', prefetch=False)
-    spx_mobile_legacy_access = fields.Boolean('Existing member access', readonly=True, copy=False, groups='base.group_system', prefetch=False,
-        help='Preserves access for portal accounts that already existed when verified signup was installed.')
 
     def _mobile_verified_access(self):
         self.ensure_one()
@@ -126,26 +128,8 @@ class Users(models.Model):
         return {'uid': self.id, 'auth_method': 'spx_mobile_handoff', 'mfa': 'default'}
 
 
-class Partner(models.Model):
-    _inherit = 'res.partner'
-
-    # res.users.name delegates to the partner; protect that native lookup too.
-    spx_mobile_first_name = fields.Char('App first name', groups='base.group_system', prefetch=False)
-    spx_mobile_last_name = fields.Char('App last name', groups='base.group_system', prefetch=False)
-    spx_mobile_birthday = fields.Date('Birthday', groups='base.group_system', prefetch=False)
-    spx_mobile_sms = fields.Boolean('App promotional SMS', groups='base.group_system', prefetch=False)
-    spx_mobile_verified_at = fields.Datetime('App email verified', readonly=True, groups='base.group_system', prefetch=False)
-    spx_mobile_policy_version = fields.Char('Accepted policy version', readonly=True, groups='base.group_system', prefetch=False)
-    spx_mobile_terms_at = fields.Datetime('Terms accepted', readonly=True, groups='base.group_system', prefetch=False)
-
-
 class MobileRate(models.Model):
-    _name = 'spx.mobile.account.rate'
-    _description = 'Account request rate limits'
-    key = fields.Char(required=True, index=True)
-    bucket = fields.Integer(required=True)
-    count = fields.Integer(default=0)
-    _key_unique = models.Constraint('UNIQUE(key, bucket)', 'Unique request bucket.')
+    _inherit = 'spx.mobile.account.rate'
 
     @api.model
     def _allow(self, website, ip, email=''):
@@ -170,36 +154,7 @@ class MobileRate(models.Model):
 
 
 class MobileRegistration(models.Model):
-    _name = 'spx.mobile.registration'
-    _description = 'Jenny’s account registration and recovery'
-    _rec_name = 'email'
-    _order = 'create_date desc, id desc'
-
-    website_id = fields.Many2one('website', required=True, ondelete='cascade', index=True)
-    email = fields.Char(required=True, index=True)
-    kind = fields.Selection([('signup', 'Signup'), ('reset', 'Password reset')], required=True)
-    state = fields.Selection([('pending', 'Awaiting email'), ('done', 'Completed'), ('expired', 'Expired')], default='pending', required=True)
-    first_name = fields.Char()
-    last_name = fields.Char()
-    phone = fields.Char()
-    birthday = fields.Date()
-    city = fields.Char()
-    marketing_email = fields.Boolean()
-    marketing_sms = fields.Boolean()
-    policy_version = fields.Char()
-    terms_at = fields.Datetime()
-    password_hash = fields.Char(copy=False, groups='base.group_system')
-    token_hash = fields.Char(index=True, copy=False, groups='base.group_system')
-    receipt_hash = fields.Char(index=True, copy=False, groups='base.group_system')
-    expires_at = fields.Datetime(required=True)
-    sent_at = fields.Datetime()
-    verified_at = fields.Datetime()
-    user_id = fields.Many2one('res.users', readonly=True, ondelete='set null')
-    partner_id = fields.Many2one('res.partner', readonly=True, ondelete='set null')
-    card_id = fields.Many2one('loyalty.card', readonly=True, ondelete='set null')
-    mail_id = fields.Many2one('mail.mail', readonly=True, ondelete='set null')
-    handoff_hash = fields.Char(copy=False, index=True, groups='base.group_system', prefetch=False)
-    handoff_expires_at = fields.Datetime(copy=False, groups='base.group_system', prefetch=False)
+    _inherit = 'spx.mobile.registration'
 
     def _issue_handoff(self):
         self.ensure_one()

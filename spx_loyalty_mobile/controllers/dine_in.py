@@ -1,7 +1,7 @@
 """Authenticated baskets -> new, unpaid native POS orders.
 
-No POS assets, model overrides, table assignment, kitchen dispatch, payments or
-loyalty writes. Staff own those actions in Odoo's unmodified POS interface.
+No table assignment, kitchen dispatch, payments or loyalty writes here.
+Staff own those actions in Odoo's native POS interface.
 """
 import hashlib
 import json
@@ -15,7 +15,7 @@ from odoo.http import request
 from odoo.tools import html2plaintext
 
 from .api import MobileAPI
-from .validation import mutation_id, positive_id, quantity
+from .validation import mutation_id, positive_id, public_card_details, quantity
 
 
 class DineInAPI(MobileAPI):
@@ -70,10 +70,21 @@ class DineInAPI(MobileAPI):
         return (self._simple_product(product.product_tmpl_id)
                 and not product.to_weight and product.tracking == 'none')
 
-    def _order_context(self, config, partner):
+    def _service_preset(self, website, config, service):
+        if service == 'takeaway':
+            preset = website._spx_takeaway_preset()
+            if not preset:
+                raise UserError(_('Takeaway is unavailable right now. Choose Dine-in or speak to our team.'))
+            return preset
+        if service != 'dine_in':
+            raise UserError(_('Choose Dine-in or Takeaway.'))
+        return config.default_preset_id if config.use_presets else request.env['pos.preset']
+
+    def _order_context(self, config, partner, preset=None):
         """Use the same configured customer/preset priorities as native POS."""
         partner = partner.sudo().with_company(config.company_id)
-        preset = config.default_preset_id if config.use_presets else request.env['pos.preset']
+        if preset is None:
+            preset = config.default_preset_id if config.use_presets else request.env['pos.preset']
         if preset and (preset.is_return or preset.identification == 'address' or preset.use_timing):
             raise UserError(_('Dine-in ordering is temporarily unavailable. Please order with our team.'))
         pricelist = partner.property_product_pricelist
@@ -98,12 +109,12 @@ class DineInAPI(MobileAPI):
             'user_id': config.current_session_id.user_id.id or False,
         }
 
-    def _priced_order(self, config, partner, entries):
+    def _priced_order(self, config, partner, entries, preset=None):
         """Quote on unsaved native records; native pricelists and tax routines.
 
         A read/quote creates no POS bill, payment, picking or loyalty entry.
         """
-        values = self._order_context(config, partner)
+        values = self._order_context(config, partner, preset)
         model = request.env['pos.order'].sudo().with_company(config.company_id)
         order = model.new(values)
         line_values = []
@@ -144,19 +155,35 @@ class DineInAPI(MobileAPI):
         result = {'lines': [], 'total': 0, 'subtotal': 0, 'tax': 0, 'rewards': [],
                   'currency': config.currency_id.name if config else website.currency_id.name,
                   'basket_key': basket.token if basket else None, 'quote': None,
-                  'can_submit': False, 'service': 'dine_in', 'warning': None}
+                  'can_submit': False, 'service': basket.service if basket else 'dine_in',
+                  'services': ['dine_in'], 'warning': None}
+        if website._spx_takeaway_preset():
+            result['services'].append('takeaway')
         previous = request.env['spx.mobile.submission'].sudo().search(
             self._owner_domain(website, partner), limit=1)
         result['last_order'] = self._receipt(previous) if previous else None
         if not config:
             result['warning'] = _('Dine-in ordering will be available soon. Please order with our team.')
             return result, None, None
+        try:
+            preset = self._service_preset(website, config, result['service'])
+        except UserError as error:
+            result['warning'] = str(error)
+            # Keep the basket visible so the customer can switch back to
+            # Dine-in if an administrator removes the Takeaway preset.
+            result['lines'] = [
+                {'id': int(key), 'name': value['name'], 'qty': value['qty'],
+                 'total': 0, 'editable': True, 'reward': False,
+                 'available': False, 'image': ''}
+                for key, value in (basket.items or {}).items()
+            ] if basket else []
+            return result, None, None
         selections = basket.items or {} if basket else {}
         products = self._products(website, config).search(
             self._menu_domain(website, config) + [('id', 'in', [int(key) for key in selections])])
         eligible = {p.id: p for p in products if self._can_add(p)}
         entries = [(eligible[int(key)], value['qty']) for key, value in selections.items() if int(key) in eligible]
-        order, values, line_values = self._priced_order(config, partner, entries)
+        order, values, line_values = self._priced_order(config, partner, entries, preset)
         prices = {line.product_id.id: line for line in order.lines}
         for key, value in selections.items():
             pid = int(key)
@@ -179,7 +206,8 @@ class DineInAPI(MobileAPI):
         if basket:
             # Bound to owner, basket revision, destination, current session and
             # exact native prices/taxes. Recomputed again inside submission.
-            digest = {'key': basket.token, 'website': website.id, 'values': values, 'lines': line_values}
+            digest = {'key': basket.token, 'website': website.id, 'service': basket.service,
+                      'values': values, 'lines': line_values}
             result['quote'] = hashlib.sha256(json.dumps(digest, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
         return result, values, line_values
 
@@ -191,12 +219,17 @@ class DineInAPI(MobileAPI):
         config = self._config(website)
         if not config:
             return {'items': [], 'next_offset': None}
+        basket, _created = self._basket(website, partner)
+        try:
+            preset = self._service_preset(website, config, basket.service if basket else 'dine_in')
+        except UserError:
+            return {'items': [], 'next_offset': None}
         products = self._products(website, config).search(
             self._menu_domain(website, config), order='pos_sequence, id', limit=41, offset=offset)
         items = []
         for product in products[:40]:
             if self._can_add(product):
-                quote, _values, _lines = self._priced_order(config, partner, [(product, 1)])
+                quote, _values, _lines = self._priced_order(config, partner, [(product, 1)], preset)
                 price = quote.amount_total
             else:
                 price = None
@@ -213,6 +246,17 @@ class DineInAPI(MobileAPI):
     def dine_cart(self):
         website, partner = self._scope()
         return self._cart_data_v2(website, partner)[0]
+
+    @http.route('/spx/mobile/v2/dine-in/cart/service', type='jsonrpc', auth='user', website=True, methods=['POST'])
+    def dine_service(self, service, basket_key=None):
+        website, partner = self._scope()
+        config = self._config(website, required=True)
+        self._service_preset(website, config, service)
+        basket, created = self._basket(website, partner, lock=True)
+        self._check_key(basket, basket_key, created)
+        if basket.service != service:
+            basket.write({'service': service, 'token': str(uuid4())})
+        return self._cart_data_v2(website, partner, basket)[0]
 
     @http.route('/spx/mobile/v2/dine-in/cart/add', type='jsonrpc', auth='user', website=True, methods=['POST'])
     def dine_add(self, product_id, qty, basket_key=None):
@@ -288,18 +332,22 @@ class DineInAPI(MobileAPI):
         if not cart['can_submit'] or cart['quote'] != quote:
             return {'status': 'changed', 'cart': cart}
         order_uuid = str(uuid4())
+        takeaway = cart['service'] == 'takeaway'
+        native = request.env['pos.order'].sudo().with_company(website.company_id)
         values.update({
             'uuid': order_uuid, 'source': 'pos', 'table_id': False,
-            'floating_order_name': _('App · %s', partner.name),
+            'ticket_code': native._spx_new_ticket_code(),
+            'floating_order_name': (_('App · Takeaway · %s', partner.name) if takeaway
+                                    else _('App · %s', partner.name)),
             # Native OrderDisplay/TagsList expects a JSON array of note objects.
             'internal_note': json.dumps([{
-                'text': _('Customer app order. Confirm the guest and table, then send to preparation.'),
+                'text': (_('Takeaway app order. Confirm the guest, then send to preparation. No table required.')
+                         if takeaway else _('Customer app order. Confirm the guest and table, then send to preparation.')),
                 'colorIndex': 0,
             }]),
             'payment_ids': [], 'to_invoice': False,
             'lines': [Command.create({**line, 'uuid': str(uuid4())}) for line in line_values],
         })
-        native = request.env['pos.order'].sudo().with_company(website.company_id)
         native.sync_from_ui([values])
         order = native.search([('uuid', '=', order_uuid), ('partner_id', '=', partner.id),
                                ('company_id', '=', website.company_id.id), ('config_id', '=', config.id)], limit=1)
@@ -312,7 +360,7 @@ class DineInAPI(MobileAPI):
             raise UserError(_('Prices changed while sending your order. Refresh and review your basket.'))
         receipt = {'name': order.pos_reference, 'date': self._date(order.date_order),
                    'total': order.amount_total, 'currency': order.currency_id.name, 'state': 'draft',
-                   'submission_key': basket_key}
+                   'submission_key': basket_key, 'service': cart['service'], 'id': order.id}
         submissions.create({'partner_id': partner.id, 'website_id': website.id,
                             'key': basket_key, 'quote': quote, 'order_id': order.id, 'receipt': receipt})
         basket.write({'items': {}, 'token': str(uuid4())})
@@ -330,5 +378,31 @@ class DineInAPI(MobileAPI):
             ('partner_id', '=', partner.id), ('company_id', '=', website.company_id.id),
             ('config_id', '=', config.id), ('state', 'in', ['draft', 'paid', 'done', 'cancel']),
         ], order='date_order desc, id desc', limit=40)
-        return [{'name': o.pos_reference or o.name, 'date': self._date(o.date_order),
-                 'total': o.amount_total, 'currency': o.currency_id.name, 'state': o.state} for o in orders]
+        return [self._order_data(o) for o in orders]
+
+    def _order_data(self, order):
+        """Extension hook for optional native checkout; no payment tokens in history."""
+        submission = request.env['spx.mobile.submission'].sudo().search([
+            ('order_id', '=', order.id), ('partner_id', '=', order.partner_id.id),
+        ], limit=1)
+        service = (submission.receipt or {}).get('service', 'dine_in')
+        return {'id': order.id, 'name': order.pos_reference or order.name, 'service': service,
+                'date': self._date(order.date_order), 'total': order.amount_total,
+                'currency': order.currency_id.name, 'state': order.state,
+                'payments': self._order_payments(order)}
+
+    def _payment_card_details(self, payment):
+        return public_card_details(payment.card_brand, payment.card_no)
+
+    def _order_payments(self, order):
+        # Only finalized native bills have a customer receipt. Draft POS lines
+        # can still be edited by staff and are not proof of completed payment.
+        if order.state not in ('paid', 'done', 'invoiced'):
+            return []
+        return [{
+            'method': payment.payment_method_id.name,
+            'amount': payment.amount, 'currency': payment.currency_id.name,
+            'date': self._date(payment.payment_date),
+            'kind': 'change' if payment.is_change else ('refund' if payment.amount < 0 else 'payment'),
+            'card': self._payment_card_details(payment),
+        } for payment in order.payment_ids.sorted('id')]

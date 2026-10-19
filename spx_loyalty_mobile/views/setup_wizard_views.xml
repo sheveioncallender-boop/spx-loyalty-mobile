@@ -1,0 +1,125 @@
+<odoo>
+    <record id="app_setup_wizard_form" model="ir.ui.view">
+        <field name="name">spx.mobile.setup.wizard.form</field>
+        <field name="model">spx.mobile.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Set up your app" class="jr-setup-wizard" create="false" delete="false">
+                <field name="step" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="cached_loyalty_id" invisible="1"/>
+                <field name="cached_gift_id" invisible="1"/>
+                <field name="cached_birthday_id" invisible="1"/>
+                <field name="progress" nolabel="1" readonly="1"/>
+                <div invisible="step != 'connect'" class="jr-setup-step">
+                    <h2>A simple start.</h2>
+                    <p class="text-muted">Check your website and app name. Your current settings are already filled in.</p>
+                    <group>
+                        <field name="website_id" options="{'no_open': True}"/>
+                        <field name="currency_id" options="{'no_open': True}"/>
+                        <field name="origin" placeholder="https://your-odoo-instance.example"/>
+                        <field name="brand"/>
+                        <field name="enable_app"/>
+                    </group>
+                    <p class="jr-setup-note">Your choices take effect after the final review.</p>
+                </div>
+                <div invisible="step != 'benefits'" class="jr-setup-step">
+                    <h2>Make it rewarding.</h2>
+                    <p class="text-muted">Choose a starting point. You can refine every program later in Odoo.</p>
+                    <div class="jr-setup-card">
+                        <h3>Loyalty</h3>
+                        <field name="loyalty_mode" widget="radio" options="{'horizontal': True}" nolabel="1"/>
+                        <group invisible="loyalty_mode != 'existing'">
+                            <field name="loyalty_program_ids" widget="many2many_tags"
+                                domain="[('program_type', '=', 'loyalty'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, website_id]), ('currency_id', '=', currency_id)]"
+                                context="{'default_program_type': 'loyalty', 'default_company_id': company_id, 'default_website_id': website_id, 'default_currency_id': currency_id}"
+                                options="{'no_quick_create': True}"/>
+                        </group>
+                        <p class="text-muted" invisible="loyalty_mode != 'existing'">Select a program, or choose “Create and Edit” to make your own. Odoo saves programs created in that editor immediately.</p>
+                        <div invisible="loyalty_mode != 'template'">
+                            <p invisible="not cached_loyalty_id" class="jr-setup-note">Your earlier template will be reused with its current rules. To change the rules, open the program in Odoo.</p>
+                            <group invisible="cached_loyalty_id">
+                                <field name="loyalty_template"/>
+                                <field name="earn_points"/>
+                                <field name="redeem_points"/>
+                                <field name="reward_value" string="Discount (%)" invisible="loyalty_template != 'percent'"/>
+                                <field name="reward_value" string="Discount amount" widget="monetary" invisible="loyalty_template != 'per_order'"/>
+                            </group>
+                            <p class="text-muted" invisible="cached_loyalty_id">These are editable starting values. Rewards apply to the whole order.</p>
+                        </div>
+                    </div>
+                    <div class="jr-setup-card">
+                        <h3>Gift cards <small class="text-muted">Optional</small></h3>
+                        <field name="gift_mode" widget="radio" nolabel="1" options="{'horizontal': True}"/>
+                        <group invisible="gift_mode != 'template' or cached_gift_id">
+                            <field name="gift_values" placeholder="50, 100, 200"/>
+                        </group>
+                        <p invisible="gift_mode != 'template' or cached_gift_id" class="text-muted">Amounts use your website currency. The new gift products will be published when you apply the setup.</p>
+                        <p invisible="gift_mode != 'template' or not cached_gift_id" class="jr-setup-note">Your earlier gift program and products will be reused. Existing prices, taxes and publication settings stay as they are.</p>
+                        <group invisible="gift_mode != 'existing'">
+                            <field name="gift_program_ids" widget="many2many_tags"
+                                domain="[('program_type', '=', 'gift_card'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, website_id]), ('currency_id', '=', currency_id)]"
+                                context="{'default_program_type': 'gift_card', 'default_company_id': company_id, 'default_website_id': website_id, 'default_currency_id': currency_id}"
+                                options="{'no_quick_create': True}"/>
+                            <field name="gift_product_ids" widget="many2many_tags"
+                                domain="[('active', '=', True), ('sale_ok', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, website_id])]" options="{'no_create': True}"/>
+                        </group>
+                    </div>
+                    <div class="jr-setup-card">
+                        <h3>Birthday reward <small class="text-muted">Optional</small></h3>
+                        <field name="birthday_mode" widget="radio" nolabel="1" options="{'horizontal': True}"/>
+                        <group invisible="birthday_mode == 'keep'">
+                            <field name="birthday_program_id" invisible="birthday_mode != 'existing'"
+                                domain="[('program_type', '=', 'gift_card'), ('active', '=', True), ('company_id', 'in', [False, company_id]), ('website_id', 'in', [False, website_id]), ('currency_id', '=', currency_id)]"
+                                context="{'default_program_type': 'gift_card', 'default_company_id': company_id, 'default_website_id': website_id, 'default_currency_id': currency_id}"
+                                options="{'no_quick_create': True}"/>
+                            <field name="birthday_amount"/>
+                            <field name="birthday_days"/>
+                            <field name="birthday_audience"/>
+                            <field name="birthday_enabled"/>
+                        </group>
+                        <p invisible="birthday_mode == 'keep'" class="text-muted">Uses a separate birthday credit program. Existing customer balances and expiry dates stay unchanged.</p>
+                    </div>
+                </div>
+                <div invisible="step != 'customers'" class="jr-setup-step">
+                    <h2>Welcome your customers.</h2>
+                    <p class="text-muted">Enable signup when your email and policies are ready. You can finish these later.</p>
+                    <group><field name="signup_enabled"/></group>
+                    <div invisible="not signup_enabled" class="jr-setup-card">
+                        <group>
+                            <field name="signup_program_id" invisible="loyalty_mode == 'template'" domain="[('id', 'in', loyalty_program_ids)]" options="{'no_create': True}"/>
+                            <field name="mail_from"/>
+                            <field name="policy_version"/>
+                        </group>
+                        <group><field name="terms"/><field name="privacy"/></group>
+                        <div class="d-flex align-items-start gap-2 my-3">
+                            <field name="policies_confirmed" nolabel="1" class="mb-0"/>
+                            <label for="policies_confirmed"/>
+                        </div>
+                        <p class="jr-setup-note">Your publisher will check verification-email delivery before release.</p>
+                    </div>
+                    <div class="jr-setup-card">
+                        <h3>Dine-in ordering <small class="text-muted">Optional</small></h3>
+                        <group><field name="pos_config_id" domain="[('active', '=', True), ('module_pos_restaurant', '=', True), ('company_id', '=', company_id)]" options="{'no_create': True}"/></group>
+                        <p class="text-muted">Choose your restaurant POS. Staff continue to manage tables, kitchen orders and payment.</p>
+                    </div>
+                </div>
+                <div invisible="step != 'review'" class="jr-setup-step">
+                    <h2>Ready to apply?</h2>
+                    <p class="text-muted">Review your choices. Use Back if you want to adjust anything.</p>
+                    <field name="review" nolabel="1" readonly="1"/>
+                    <div class="d-flex align-items-start gap-2 my-3">
+                        <field name="confirmed" nolabel="1" class="mb-0"/>
+                        <label for="confirmed"/>
+                    </div>
+                    <p class="jr-setup-note">After saving, the checklist will guide you through email, menu and app testing.</p>
+                </div>
+                <footer>
+                    <button name="action_back" type="object" string="Back" invisible="step == 'connect'" class="btn-secondary"/>
+                    <button name="action_next" type="object" string="Continue" invisible="step == 'review'" class="btn-primary"/>
+                    <button name="action_apply" type="object" string="Apply setup" invisible="step != 'review'" class="btn-primary"/>
+                    <button string="Close" special="cancel" class="btn-link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,49 @@
+<odoo>
+    <record id="mobile_removal_form" model="ir.ui.view">
+        <field name="name">spx.mobile.removal.form</field>
+        <field name="model">spx.mobile.removal</field>
+        <field name="arch" type="xml">
+            <form string="Remove Jenny’s customer app">
+                <p>This applies to all websites in this database. Native customers, portal accounts, products, orders, payments, loyalty cards, points and gift-card balances remain in Odoo with either option.</p>
+                <group><field name="mode" widget="radio"/></group>
+                <p invisible="mode != 'keep'">The connector is removed. Jenny’s Customer App Data stays installed in this database, preserving settings, birthdays, consent records and app history for reinstall. Pending verification links are invalidated. No data is exported.</p>
+                <div invisible="mode != 'remove'">
+                    <p>Both Jenny’s modules will be removed. App-only birthdays, consent fields, settings, inbox messages, gift-delivery history and duplicate-request records will be deleted. Sent emails remain in native Odoo mail history. Reinstall starts fresh; native cards and balances remain.</p>
+                    <field name="confirm_remove"/>
+                </div>
+                <p>Continue opens Odoo’s uninstall preview. Review its affected modules before confirming. Cancel there to leave the installation unchanged.</p>
+                <footer>
+                    <button name="action_continue" type="object" string="Review uninstall" class="btn-primary"/>
+                    <button special="cancel" string="Cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="mobile_removal_action" model="ir.actions.act_window">
+        <field name="name">Uninstall options</field><field name="res_model">spx.mobile.removal</field>
+        <field name="view_mode">form</field><field name="target">new</field>
+    </record>
+    <record id="mobile_connection_form" model="ir.ui.view">
+        <field name="name">spx.mobile.connection.form</field><field name="model">spx.mobile.connection</field>
+        <field name="arch" type="xml">
+            <form string="App connection">
+                <p>Use this instance’s public HTTPS origin. The database is detected automatically. No administrator password or API key is included in the app connection file; customers use their own accounts.</p>
+                <group><field name="website_id" options="{'no_create': True}"/>
+                    <field name="origin" placeholder="https://jennys.example"/>
+                    <field name="database"/><field name="config_filename" invisible="1"/>
+                    <field name="config_file" filename="config_filename" readonly="1"/>
+                </group>
+                <p>Download the connection file for the Android/iOS build, then save the account-link address. Changing these details does not redirect an already installed APK. On multi-website instances, map this origin to the selected website in Odoo. Use App setup for the remaining settings and readiness checklist.</p>
+                <footer><button name="action_apply" type="object" string="Save account-link address" class="btn-primary"/>
+                    <button special="cancel" string="Close" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="mobile_connection_action" model="ir.actions.act_window">
+        <field name="name">App connection</field><field name="res_model">spx.mobile.connection</field>
+        <field name="view_mode">form</field><field name="target">new</field>
+    </record>
+    <menuitem id="mobile_connection_menu" name="App connection" parent="mobile_menu" action="mobile_connection_action" sequence="51" groups="base.group_system"/>
+    <menuitem id="mobile_removal_menu" name="Uninstall options" parent="mobile_menu" action="mobile_removal_action" sequence="99" groups="base.group_system"/>
+</odoo>

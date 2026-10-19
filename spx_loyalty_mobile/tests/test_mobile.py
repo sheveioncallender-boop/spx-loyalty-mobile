@@ -46,6 +46,14 @@ class TestMobileScope(TransactionCase):
     def _request(self, user=None):
         return SimpleNamespace(env=self.env(user=(user or self.alice).id), website=self.website)
 
+    def setUp(self):
+        super().setUp()
+        # Odoo 19 Controller.env and translations use the core request proxy,
+        # while the endpoint uses its module's imported request. Supply both.
+        request_patch = patch('odoo.http.request', self._request())
+        request_patch.start()
+        self.addCleanup(request_patch.stop)
+
     def test_bootstrap_only_returns_own_cards_and_messages(self):
         with patch('odoo.addons.spx_loyalty_mobile.controllers.api.request', self._request()):
             data = self.controller.bootstrap()

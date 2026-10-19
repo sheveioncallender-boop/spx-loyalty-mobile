@@ -19,6 +19,13 @@
                         <span class="jr-brand-caption">THE PLACE FOR YOUR REGULARS</span>
                     </div>
                 </section>
+                <section class="jr-settings" aria-label="App setup">
+                    <div class="jr-settings-copy"><h2>Your app, ready in a few steps.</h2><p>Connect, choose your benefits, and review. Start with a template or use your own programs.</p></div>
+                    <button type="button" class="jr-settings-button" t-att-disabled="state.opening !== null"
+                            t-on-click="() => this.openAction('setup', 'mobile_setup_action')">
+                        <t t-if="state.opening === 'setup'">Opening…</t><t t-else="">Set up your app <span aria-hidden="true">↗</span></t>
+                    </button>
+                </section>
                 <div class="jr-section-heading">
                     <div><p class="jr-eyebrow">MEMBER SERVICES</p><h2>Make every visit count.</h2></div>
                     <span class="jr-section-note">Choose where you’d like to begin.</span>
@@ -42,12 +49,12 @@
                 </section>
                 <section class="jr-settings" aria-label="App settings">
                     <span class="jr-settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></span>
-                    <div class="jr-settings-copy"><h2>Your app, connected.</h2><p>Choose the website and loyalty programs available to your customers.</p></div>
+                    <div class="jr-settings-copy"><h2>Optional features and advanced settings</h2><p>Manage birthdays, gift cards and the full website configuration.</p></div>
                     <button type="button" class="jr-settings-button" t-att-disabled="state.opening !== null"
                             t-att-aria-busy="state.opening === 'settings' ? 'true' : 'false'"
                             t-on-click="() => this.openAction('settings', 'websites_action')">
                         <t t-if="state.opening === 'settings'"><span class="jr-spinner" aria-hidden="true"/>Opening…</t>
-                        <t t-else="">App settings <span aria-hidden="true">↗</span></t>
+                        <t t-else="">Advanced settings <span aria-hidden="true">↗</span></t>
                     </button>
                 </section>
                 <footer class="jr-footer"><span>Jenny’s on the Boulevard</span><span>Good company since 1987.</span></footer>

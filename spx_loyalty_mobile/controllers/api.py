@@ -65,6 +65,7 @@ class MobileAPI(http.Controller):
             'brand': website.spx_mobile_brand or website.name,
             'customer': {'name': partner.name, 'email': partner.email or '',
                          'promotional_email': partner.spx_mobile_email,
+                         'announcements': partner.sudo().spx_member_announcements,
                          'promotional_sms': partner.sudo().spx_mobile_sms},
             'currency': website.currency_id.name,
             'cards': [{'id': c.id, 'name': c.program_id.name, 'number': c.code,
@@ -78,7 +79,7 @@ class MobileAPI(http.Controller):
             'messages': [{'id': m.id, 'name': m.name, 'body': m.body,
                           'read': bool(m.read_at), 'date': self._date(m.create_date)} for m in messages],
             'capabilities': {'cart': bool(website.spx_mobile_pos_config_id), 'inbox': True,
-                             'push': False, 'checkout': 'dine_in', 'ordering_api': 2},
+                             'push': False, 'wallet': True, 'checkout': 'dine_in', 'ordering_api': 2},
         }
 
     def _simple_product(self, template):
@@ -110,6 +111,7 @@ class MobileAPI(http.Controller):
             raise UserError(_('Choose a valid email preference.'))
         partner.sudo().write({'spx_mobile_email': promotional_email})
         return {'promotional_email': partner.spx_mobile_email,
+                         'announcements': partner.sudo().spx_member_announcements,
                          'promotional_sms': partner.sudo().spx_mobile_sms}
 
     @http.route('/spx/mobile/v1/messages/read', type='jsonrpc', auth='user', website=True, methods=['POST'])
