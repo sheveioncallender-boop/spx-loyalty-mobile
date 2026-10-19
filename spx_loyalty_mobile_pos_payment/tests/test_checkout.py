@@ -389,4 +389,100 @@ class TestMobilePOSCheckout(TestDineInNative):
         other.confirm_coupon_programs(coupons)
         self.assertEqual(card.points, 125)
 
+    def paid_loyalty_sale(self):
+        order, program, card, coupons = self.loyalty_fixture()
+        order.spx_prepare_loyalty(coupons)
+        self.pay_native(order)
+        return order, program, card
+
+    def test_native_full_refund_reverses_recorded_award_once(self):
+        order, program, card = self.paid_loyalty_sale()
+        # Reversal must not recalculate using today's earning rules.
+        program.rule_ids.reward_point_amount = 7
+        refund = order._refund()
+        self.assertEqual(refund.spx_reconcile_refund_loyalty()['status'], 'unpaid')
+        self.assertEqual(card.points, 125)
+        self.pay_native(refund, -100)
+        self.assertEqual(refund.state, 'paid')
+        self.assertEqual((refund.amount_paid, len(refund.payment_ids)), (-100, 1))
+        self.assertEqual(card.points, 25)
+        history = card.history_ids.filtered(lambda h: h.order_model == 'pos.order' and h.order_id == refund.id)
+        self.assertEqual(len(history), 1)
+        self.assertEqual((history.issued, history.used), (-100, 0))
+        models = ['pos.order', 'pos.payment', 'payment.transaction', 'account.payment', 'account.move', 'loyalty.history']
+        before = {model: self.env[model].search_count([]) for model in models}
+        refund.spx_reconcile_refund_loyalty()
+        refund.action_spx_reconcile_refund_loyalty()
+        self.assertEqual(card.points, 25)
+        self.assertEqual(before, {model: self.env[model].search_count([]) for model in models})
+
+    def test_refund_recovery_preserves_completed_cash_refund(self):
+        order, program, card = self.paid_loyalty_sale()
+        refund = order._refund()
+        with patch.object(type(refund), 'spx_reconcile_refund_loyalty', side_effect=UserError('Temporary failure')):
+            with self.assertLogs('odoo.addons.spx_loyalty_mobile_pos_payment.models.refund_loyalty', level='ERROR'):
+                self.pay_native(refund, -100)
+        self.assertEqual((refund.state, refund.amount_paid, card.points), ('paid', -100, 125))
+        payments = refund.payment_ids
+        refund.action_spx_reconcile_refund_loyalty()
+        self.assertEqual(card.points, 25)
+        self.assertEqual(refund.payment_ids, payments)
+        self.assertEqual(refund.amount_paid, -100)
+
+    def test_refund_does_not_clamp_reversal_when_points_were_spent(self):
+        order, program, card = self.paid_loyalty_sale()
+        # Represents an intervening redemption; refund must undo the whole award.
+        card.points = 10
+        refund = order._refund()
+        self.pay_native(refund, -100)
+        self.assertEqual(card.points, -90)
+
+    def test_refund_reconciliation_is_staff_only_and_requires_original_customer(self):
+        order, program, card = self.paid_loyalty_sale()
+        refund = order._refund()
+        with self.assertRaises(AccessError):
+            refund.with_user(self.alice).spx_reconcile_refund_loyalty()
+        with self.assertRaises(AccessError):
+            refund.with_user(self.alice).action_spx_reconcile_refund_loyalty()
+        refund.partner_id = self.bob.partner_id
+        with self.assertLogs('odoo.addons.spx_loyalty_mobile_pos_payment.models.refund_loyalty', level='ERROR'):
+            self.pay_native(refund, -100)
+        self.assertEqual(card.points, 125)
+        with self.assertRaises(UserError):
+            refund.action_spx_reconcile_refund_loyalty()
+
+    def test_partial_refund_keeps_native_money_flow_and_requires_loyalty_review(self):
+        order, program, card = self.paid_loyalty_sale()
+        refund = order._refund()
+        refund.lines.qty = -0.5
+        refund.lines._onchange_amount_line_all()
+        refund._compute_prices()
+        with self.assertLogs('odoo.addons.spx_loyalty_mobile_pos_payment.models.refund_loyalty', level='ERROR'):
+            self.pay_native(refund, -50)
+        self.assertEqual((refund.state, refund.amount_paid), ('paid', -50))
+        self.assertEqual(card.points, 125)
+        with self.assertRaises(UserError):
+            refund.action_spx_reconcile_refund_loyalty()
+
+    def test_refund_leaves_unrelated_pos_loyalty_and_gift_cards_untouched(self):
+        order, program, card, coupons = self.loyalty_fixture()
+        other = order.copy({'state': 'draft', 'payment_ids': []})
+        self.pay_native(other)
+        other.confirm_coupon_programs(coupons)
+        refund = other._refund()
+        self.pay_native(refund, -100)
+        self.assertEqual(refund.spx_reconcile_refund_loyalty()['status'], 'not_app_refund')
+        self.assertEqual(card.points, 125)
+        gift_program = self.env['loyalty.program'].create({
+            'name': 'Disposable refund gift card', 'program_type': 'gift_card',
+            'currency_id': self.config.currency_id.id, 'company_id': self.config.company_id.id,
+        })
+        gift = self.env['loyalty.card'].with_context(action_no_send_mail=True).create({
+            'program_id': gift_program.id, 'partner_id': self.alice.partner_id.id, 'points': 15,
+        })
+        order.spx_prepare_loyalty(coupons)
+        self.pay_native(order)
+        self.pay_native(order._refund(), -100)
+        self.assertEqual((card.points, gift.points), (125, 15))
+
 

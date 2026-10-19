@@ -7,6 +7,26 @@ import "@pos_online_payment/app/services/pos_store";
 import { captureNativeLoyalty } from "./loyalty_handoff";
 
 patch(PosStore.prototype, {
+    async postProcessLoyalty(order) {
+        const result = await super.postProcessLoyalty(...arguments);
+        if (order.isSynced && order.lines.some((line) => line.refunded_orderline_id)) {
+            try {
+                const response = await this.data.call(
+                    "pos.order", "spx_reconcile_refund_loyalty", [order.id]
+                );
+                if (response.card_ids?.length) {
+                    await this.data.read("loyalty.card", response.card_ids);
+                }
+            } catch {
+                this.notification.add(
+                    "Refund completed. Loyalty points need staff review on the refund order.",
+                    { type: "warning", sticky: true }
+                );
+            }
+        }
+        return result;
+    },
+
     async updateOnlinePaymentsDataWithServer(order, amount) {
         if (typeof amount === "number" && amount > 0 && order.isSynced) {
             // Native validation already synced the bill at this point. Persist

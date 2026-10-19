@@ -1,5 +1,38 @@
 # Native POS checkout from the app
 
+## Checkout bridge 19.0.1.0.3 — full-refund loyalty reversal
+
+After Odoo completes a full refund of a plain app-originated bill, reverse the
+exact loyalty award recorded on that original bill. The original sale's history
+is retained. Odoo's `confirm_coupon_programs` records negative issued points
+against the refund; native history and row locks prevent a second deduction.
+This does not recalculate earning rules or directly write card balances/history.
+An intervening redemption may leave the card negative after the full reversal.
+
+The native refund selection, quantities, cashier validation, cash/bank payments,
+stock, accounting and session close are unchanged. The hook runs after native
+saved-order processing. A loyalty failure preserves the completed monetary
+refund and shows a staff-review warning in POS. Retrying reconciles points only.
+The POS refreshes the affected card after its ordinary loyalty processing.
+
+Scope: one fully paid refund returning every line of one fully paid, customer-
+linked app bill, without reward lines, exchanges or previous return lines.
+Partial refunds, mixed exchanges and reward-bearing bills require separate
+loyalty review; their monetary refunds still use Odoo normally. Gift-card and
+eWallet credit and spent reward points are not restored by this correction.
+Unrelated POS orders retain Odoo's existing behavior.
+
+Deploy this branch, restart Odoo, then upgrade **Jenny's Rewards - Native POS
+Checkout** (`spx_loyalty_mobile_pos_payment`) to **19.0.1.0.3** and reload POS.
+No Android rebuild or payment-provider update is needed. Upgrading does not
+automatically change historical balances.
+
+For an already completed eligible refund, a POS manager opens that refund in
+POS Orders and clicks **Reconcile Refund Points**. The action is repeatable and
+does not create or modify a payment, refund, invoice or stock movement. Verify
+one negative earned-points history entry and the expected balance afterward.
+Never initiate another monetary refund to repair loyalty.
+
 ## Checkout bridge 19.0.1.0.2 — durable native loyalty
 
 A delayed successful online payment could leave points missing if the cashier's
