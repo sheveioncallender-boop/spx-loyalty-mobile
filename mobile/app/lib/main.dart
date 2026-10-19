@@ -736,6 +736,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               content: Text(
                 api.isDemo
                     ? 'This is a sample order. No order was sent and no points were changed.'
+                    : receipt['service'] == 'takeaway'
+                    ? '${receipt['name']}\n\nYour takeaway order has reached Jenny’s. Our team will review it and send it to the kitchen. Pay with our team, or in the app when your bill is ready.'
                     : '${receipt['name']}\n\nYour order has reached Jenny’s. Our team will confirm your table and send it to the kitchen. Pay after your meal.',
               ),
               actions: [
@@ -1521,6 +1523,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       Text(
         api.isDemo
             ? 'Sample menu and prices. Ordering is not available in the preview.'
+            : cart['services'] is List &&
+                  (cart['services'] as List).contains('takeaway')
+            ? 'Dine in or take away. Choose in Your order before placing it.'
             : 'Dine in with us. Order here and pay after your meal.',
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 10, color: muted),
@@ -2306,6 +2311,45 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 20),
+                    if ((cart['services'] is List &&
+                            (cart['services'] as List).contains('takeaway')) ||
+                        cart['service'] == 'takeaway') ...[
+                      const Text(
+                        'How would you like your order?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: ink,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'dine_in',
+                              label: Text('Dine-in'),
+                              icon: Icon(Icons.restaurant_outlined),
+                            ),
+                            ButtonSegment(
+                              value: 'takeaway',
+                              label: Text('Takeaway'),
+                              icon: Icon(Icons.shopping_bag_outlined),
+                            ),
+                          ],
+                          selected: {cart['service'] as String? ?? 'dine_in'},
+                          onSelectionChanged: busy || _pendingSubmission != null
+                              ? null
+                              : (selection) async {
+                                  await mutate(
+                                    () => api.service(selection.single),
+                                  );
+                                  await refresh(silent: true);
+                                },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     if (_submissionMessage != null || cart['warning'] != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 18),
@@ -2460,6 +2504,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       Text(
                         api.isDemo
                             ? 'Preview only. No payment is taken.'
+                            : cart['service'] == 'takeaway'
+                            ? 'Our team will review your takeaway order and send it to the kitchen. No table is needed. Pay with our team, or in the app when your bill is ready.'
                             : 'Our team will confirm your table and prepare your order. Pay after your meal; eligible rewards are applied with our team.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(

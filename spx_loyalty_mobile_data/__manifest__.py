@@ -1,6 +1,6 @@
 {
     'name': "Jenny's Customer App Data",
-    'version': '19.0.4.2.0',
+    'version': '19.0.4.3.0',
     'summary': 'Retains customer app settings and history when the connector is removed',
     'author': 'SPXCORP LTD',
     'license': 'LGPL-3',

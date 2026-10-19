@@ -40,6 +40,7 @@ abstract class MobileApi {
   Future<Json> cart();
   Future<Json> add(Json item);
   Future<Json> update(int lineId, num quantity);
+  Future<Json> service(String service);
   Future<Json> reward(Json reward, {int? productId});
   Future<Json> submit(Json basket);
   Future<List<dynamic>> orders();
@@ -410,6 +411,9 @@ class OdooApi implements MobileApi {
   Future<Json> update(int lineId, num quantity) =>
       _changeBasket('update', {'line_id': lineId, 'qty': quantity});
   @override
+  Future<Json> service(String service) =>
+      _changeBasket('service', {'service': service});
+  @override
   Future<Json> reward(Json reward, {int? productId}) async => throw AppError(
     'Our team can apply eligible rewards when you settle your bill.',
   );
@@ -483,6 +487,7 @@ class DemoApi implements MobileApi {
   final List<Json> _orders = [];
   final Map<String, Json> _receipts = {};
   int _basketVersion = 0;
+  String _service = 'dine_in';
   Future<void> _delay() => Future.delayed(const Duration(milliseconds: 420));
   static const items = <Json>[
     {
@@ -629,6 +634,8 @@ class DemoApi implements MobileApi {
       'basket_key': 'sample-basket-$_basketVersion',
       'quote': 'sample-quote-$_basketVersion',
       'can_submit': _lines.isNotEmpty,
+      'service': _service,
+      'services': ['dine_in', 'takeaway'],
       'last_order': _orders.isEmpty ? null : _orders.last,
     };
   }
@@ -671,6 +678,17 @@ class DemoApi implements MobileApi {
   }
 
   @override
+  Future<Json> service(String service) async {
+    if (!['dine_in', 'takeaway'].contains(service)) {
+      throw AppError('Choose Dine-in or Takeaway.');
+    }
+    await _delay();
+    _service = service;
+    _basketVersion++;
+    return cart();
+  }
+
+  @override
   Future<Json> reward(Json reward, {int? productId}) async => throw AppError(
     'Reward redemption will be available when Jenny’s launches.',
   );
@@ -698,6 +716,7 @@ class DemoApi implements MobileApi {
       'currency': 'TTD',
       'state': 'draft',
       'submission_key': key,
+      'service': _service,
     };
     _receipts[key] = receipt;
     _orders.add(receipt);

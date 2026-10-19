@@ -2,3 +2,4 @@ from . import mobile, onboarding, engagement, gifts, birthday_management, lifecy
 from . import setup
 from . import setup_wizard
 from . import pos_order
+from . import service

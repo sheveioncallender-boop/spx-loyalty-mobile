@@ -33,6 +33,9 @@
                                            options="{'no_create': True}"/>
                                     <div colspan="2"><button name="action_mobile_programs" type="object" string="Manage loyalty programs" class="btn-link"/></div>
                                     <field name="spx_mobile_pos_config_id" options="{'no_create': True}"/>
+                                    <field name="spx_mobile_takeaway_preset_id" options="{'no_create': True}"
+                                           domain="[('is_return', '=', False), ('identification', '!=', 'address'), ('use_timing', '=', False)]"/>
+                                    <p colspan="2">For Takeaway, enable presets in the selected POS, add its native Takeaway preset to the available presets, and select it here. Keep Dine-in as a different default preset. Staff review, send and settle app orders in POS.</p>
                                 </group>
                             </group>
                             <p>Choose your existing loyalty program. If none exists, use Manage loyalty programs to create one with your approved points and rewards. Ordering is optional; select a restaurant POS to enable it.</p>

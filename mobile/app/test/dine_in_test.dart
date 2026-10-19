@@ -95,6 +95,12 @@ void main() {
     await openBasket(tester, api);
     await tester.tap(find.text('Place order'));
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SegmentedButton<String>>(find.byType(SegmentedButton<String>))
+          .onSelectionChanged,
+      isNull,
+    );
     expect(api.submissions.length, 1);
     await tester.ensureVisible(find.text('Check order again'));
     await tester.tap(find.text('Check order again'));
@@ -160,6 +166,33 @@ void main() {
     expect(find.text('Order received'), findsNothing);
     expect(await tester.runAsync(api.orders), isEmpty);
     expect(api.submissions.length, 1);
+    await close(tester);
+  });
+
+  testWidgets('Takeaway selection reaches submission and survives a retry', (
+    tester,
+  ) async {
+    final api = OrderingApi()..failOnce = true;
+    await openBasket(tester, api);
+    tester.view.physicalSize = const Size(320, 700);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Takeaway'));
+    await tester.tap(find.text('Takeaway'));
+    await tester.pumpAndSettle();
+    expect((await api.cart())['service'], 'takeaway');
+    expect(find.textContaining('No table is needed.'), findsOneWidget);
+    await tester.ensureVisible(find.text('Place order'));
+    await tester.tap(find.text('Place order'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Check order again'));
+    await tester.tap(find.text('Check order again'));
+    await tester.pumpAndSettle();
+    expect(api.submissions[0], api.submissions[1]);
+    expect(
+      find.textContaining('Your takeaway order has reached'),
+      findsOneWidget,
+    );
+    expect((await tester.runAsync(api.orders))!.single['service'], 'takeaway');
     await close(tester);
   });
 

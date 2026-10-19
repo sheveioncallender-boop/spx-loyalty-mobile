@@ -108,6 +108,18 @@ class OrderStatusCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 7),
+            if (order['service'] == 'takeaway')
+              const Padding(
+                padding: EdgeInsets.only(bottom: 7),
+                child: Text(
+                  'Takeaway',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: blue,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             Text(
               'Order ${order['name']}',
               style: const TextStyle(

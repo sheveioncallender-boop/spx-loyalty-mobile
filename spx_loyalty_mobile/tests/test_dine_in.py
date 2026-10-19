@@ -86,6 +86,90 @@ class TestDineInNative(TestPoSCommon):
             result = self.api.dine_submit(cart['basket_key'], cart['quote'])
         return self.env['pos.order'].search([('pos_reference', '=', result['order']['name'])])
 
+    def _enable_takeaway(self):
+        dine_in, takeaway = self.env['pos.preset'].create([
+            {'name': 'Dine-in acceptance'}, {'name': 'Takeaway acceptance'},
+        ])
+        self.config.write({'use_presets': True, 'default_preset_id': dine_in.id,
+                           'available_preset_ids': [Command.set((dine_in | takeaway).ids)]})
+        self.website.spx_mobile_takeaway_preset_id = takeaway
+        return takeaway
+
+    def test_takeaway_uses_native_preset_and_stays_unpaid_for_staff(self):
+        preset = self._enable_takeaway()
+        before = {name: self.env[name].search_count([]) for name in (
+            'pos.payment', 'loyalty.card', 'loyalty.history', 'stock.picking')}
+        with self.as_customer():
+            cart = self.api.dine_add(self.product.id, 1)
+            self.assertEqual(cart['service'], 'dine_in')
+            self.assertIn('takeaway', cart['services'])
+            takeaway = self.api.dine_service('takeaway', cart['basket_key'])
+            self.assertNotEqual(takeaway['quote'], cart['quote'])
+            with self.assertRaises(UserError):
+                self.api.dine_submit(cart['basket_key'], cart['quote'])
+            received = self.api.dine_submit(takeaway['basket_key'], takeaway['quote'])
+            self.assertEqual(self.api.dine_submit(takeaway['basket_key'], takeaway['quote']), received)
+            self.assertEqual(self.api.dine_orders()[0]['service'], 'takeaway')
+            self.assertEqual(self.api.dine_cart()['service'], 'takeaway')
+        order = self.env['pos.order'].browse(received['order']['id'])
+        self.assertEqual(order.preset_id, preset)
+        self.assertEqual(order.partner_id, self.alice.partner_id)
+        self.assertEqual(order.state, 'draft')
+        self.assertFalse(order.table_id)
+        self.assertFalse(order.payment_ids)
+        self.assertIn('Takeaway', order.floating_order_name)
+        self.assertIn('No table required', order.internal_note)
+        self.assertEqual(before, {name: self.env[name].search_count([]) for name in before})
+
+    def test_takeaway_pricelist_requotes_and_switching_back_restores_dine_in(self):
+        preset = self._enable_takeaway()
+        pricelist = self.currency_pricelist.copy({'name': 'Takeaway test prices'})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pricelist.id, 'applied_on': '0_product_variant',
+            'product_id': self.product.id, 'compute_price': 'fixed', 'fixed_price': 75,
+        })
+        preset.pricelist_id = pricelist
+        with self.as_customer():
+            dine = self.api.dine_add(self.product.id, 1)
+            takeaway = self.api.dine_service('takeaway', dine['basket_key'])
+            self.assertEqual(takeaway['total'], 75)
+            self.assertEqual(self.api.dine_catalog()['items'][0]['price'], 75)
+            restored = self.api.dine_service('dine_in', takeaway['basket_key'])
+            self.assertEqual(restored['total'], dine['total'])
+            received = self.api.dine_submit(restored['basket_key'], restored['quote'])
+        order = self.env['pos.order'].browse(received['order']['id'])
+        self.assertEqual(order.preset_id, self.config.default_preset_id)
+        self.assertEqual(received['order']['service'], 'dine_in')
+
+    def test_takeaway_disabled_or_removed_cannot_silently_submit_as_dine_in(self):
+        with self.as_customer():
+            self.assertEqual(self.api.dine_cart()['services'], ['dine_in'])
+            with self.assertRaises(UserError):
+                self.api.dine_service('takeaway')
+        preset = self._enable_takeaway()
+        with self.as_customer():
+            cart = self.api.dine_add(self.product.id, 1)
+            cart = self.api.dine_service('takeaway', cart['basket_key'])
+        self.config.available_preset_ids -= preset
+        with self.as_customer():
+            changed = self.api.dine_submit(cart['basket_key'], cart['quote'])
+            self.assertEqual(changed['status'], 'changed')
+            self.assertFalse(changed['cart']['can_submit'])
+            self.assertEqual(changed['cart']['service'], 'takeaway')
+            restored = self.api.dine_service('dine_in', cart['basket_key'])
+            self.assertTrue(restored['can_submit'])
+        self.assertFalse(self.env['spx.mobile.submission'].search([
+            ('website_id', '=', self.website.id)]))
+
+    def test_takeaway_selection_is_customer_scoped_and_rejects_delivery(self):
+        self._enable_takeaway()
+        with self.as_customer():
+            cart = self.api.dine_add(self.product.id, 1)
+        with self.as_customer(self.bob), self.assertRaises(UserError):
+            self.api.dine_service('takeaway', cart['basket_key'])
+        with self.as_customer(), self.assertRaises(UserError):
+            self.api.dine_service('delivery', cart['basket_key'])
+
     def test_native_partial_and_full_payment_refresh_display_difference(self):
         order = self._submitted_order()
         code = order.ticket_code
